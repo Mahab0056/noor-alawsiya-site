@@ -36,7 +36,7 @@
 
   // عناصر تظهر مع التمرير، وكل مجموعة إخوة تدخل بالتتابع
   const targets = document.querySelectorAll(
-    '.hero .chip, .lead, .cta, .wrap > .chip, .two > div > .chip, .two p, .points li, .arch, .card, .note, .ayah cite, .grid figure, .reel, .contact a, .where, footer'
+    '.hero .chip, .founded, .lead, .cta, .wrap > .chip, .two > div > .chip, .two p, .points li, .arch, .card, .note, .ayah cite, .grid figure, .reel, .contact a, .where, footer'
   );
   targets.forEach((el) => {
     el.classList.add('rv');
@@ -75,7 +75,7 @@
     ).observe(video);
   }
 
-  // ذرات ذهبية تطفو بالخلفية
+  // ذرات داكنة خفيفة تطفو فوق الأصفر
   const canvas = document.getElementById('dust');
   if (canvas) {
     const ctx = canvas.getContext('2d');
@@ -101,7 +101,7 @@
         const a = 0.25 + 0.45 * (0.5 + 0.5 * Math.sin(t / 900 + d.p));
         ctx.beginPath();
         ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(241, 215, 138, ${a.toFixed(3)})`;
+        ctx.fillStyle = `rgba(12, 12, 12, ${(a * 0.45).toFixed(3)})`;
         ctx.fill();
       }
       raf = requestAnimationFrame(tick);
