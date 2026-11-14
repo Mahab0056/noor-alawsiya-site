@@ -1,0 +1,157 @@
+:root {
+  --deep: #051c14;
+  --green: #0b3326;
+  --mid: #124434;
+  --gold: #d4af37;
+  --gold-light: #f1d78a;
+  --gold-dark: #9c7a1e;
+  --ivory: #f8f1de;
+  --muted: #cfc7ae;
+  --title: "Aref Ruqaa", "Amiri", serif;
+  --body: "Amiri", serif;
+  --kufi: "Reem Kufi", "Amiri", sans-serif;
+  --pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cg fill='none' stroke='%23d4af37' stroke-opacity='.11' stroke-width='1.2'%3E%3Crect x='34' y='34' width='52' height='52'/%3E%3Crect x='34' y='34' width='52' height='52' transform='rotate(45 60 60)'/%3E%3Ccircle cx='60' cy='60' r='14'/%3E%3Cpath d='M0 60h23M97 60h23M60 0v23M60 97v23'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+body {
+  margin: 0;
+  background: var(--deep) var(--pattern);
+  color: var(--ivory);
+  font-family: var(--body);
+  font-size: 20px;
+  line-height: 1.8;
+}
+img { max-width: 100%; height: auto; display: block; }
+a { color: inherit; }
+h1, h2, h3 { font-family: var(--title); line-height: 1.5; margin: 0; font-weight: 700; }
+h2 { font-size: clamp(30px, 5vw, 44px); margin: 10px 0 18px; }
+em { font-style: normal; color: var(--gold); }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 72px 20px; }
+.band { background: linear-gradient(180deg, rgba(11, 51, 38, 0.92), rgba(5, 28, 20, 0.92)); border-block: 1px solid rgba(212, 175, 55, 0.22); }
+.center { text-align: center; }
+
+.chip {
+  display: inline-block;
+  margin: 0;
+  font-family: var(--kufi);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--deep);
+  background: linear-gradient(90deg, var(--gold-dark), var(--gold-light) 50%, var(--gold));
+  padding: 4px 22px 6px;
+  border-radius: 999px;
+}
+
+.btn {
+  display: inline-block;
+  font-family: var(--kufi);
+  font-weight: 700;
+  font-size: 19px;
+  text-decoration: none;
+  color: var(--deep);
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  padding: 10px 30px 12px;
+  border-radius: 999px;
+  border: 2px solid var(--gold);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn:hover, .btn:focus-visible { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(212, 175, 55, 0.3); }
+.btn.ghost { background: transparent; color: var(--gold-light); }
+.btn.small { font-size: 16px; padding: 6px 20px 8px; }
+
+/* شريط التنقل */
+.top {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 18px;
+  padding: 10px 20px;
+  background: rgba(5, 28, 20, 0.9);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(212, 175, 55, 0.25);
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-family: var(--title); font-size: 24px; color: var(--gold-light); }
+.brand img { width: auto; height: 44px; }
+.top nav { display: flex; gap: 22px; margin-inline-start: auto; font-family: var(--kufi); font-size: 17px; }
+.top nav a { text-decoration: none; color: var(--muted); }
+.top nav a:hover { color: var(--gold-light); }
+
+/* الواجهة */
+.hero { text-align: center; padding: 48px 20px 80px; background: radial-gradient(ellipse at 50% 30%, rgba(18, 68, 52, 0.95), rgba(5, 28, 20, 0) 70%); }
+.hero-in { max-width: 820px; margin: 0 auto; }
+.logo { width: min(300px, 62vw); margin: 0 auto 10px; }
+.hero h1 { font-size: clamp(40px, 8vw, 76px); margin: 18px 0 14px; }
+.lead { font-size: clamp(20px, 2.6vw, 24px); color: var(--muted); max-width: 640px; margin: 0 auto 28px; }
+.cta { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; }
+
+/* عن المدرسة */
+.two { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 48px; align-items: center; }
+.points { list-style: none; padding: 0; margin: 18px 0 0; }
+.points li { padding-inline-start: 30px; position: relative; margin-bottom: 6px; }
+.points li::before { content: ""; position: absolute; inset-inline-start: 4px; top: 0.72em; width: 12px; height: 12px; background: var(--gold); transform: rotate(45deg); }
+.arch { margin: 0; border: 4px solid var(--gold); border-radius: 50% 50% 14px 14px / 34% 34% 14px 14px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); }
+.arch img { width: 100%; aspect-ratio: 4 / 4.4; object-fit: cover; }
+
+/* الدورات */
+.cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 22px; margin-top: 12px; }
+.card { position: relative; background: rgba(11, 51, 38, 0.85); border: 1px solid rgba(212, 175, 55, 0.35); border-radius: 18px; padding: 26px 26px 24px; }
+.card.feature { border: 2px solid var(--gold); background: linear-gradient(160deg, rgba(18, 68, 52, 0.95), rgba(11, 51, 38, 0.9)); }
+.card h3 { font-size: 30px; color: var(--gold-light); }
+.card h3 small { font-family: var(--body); font-size: 18px; color: var(--muted); font-weight: 400; }
+.card .sub { margin: 2px 0 14px; color: var(--ivory); }
+.card dl { margin: 0 0 4px; display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 18px; }
+.card dt { font-family: var(--kufi); font-size: 15px; color: var(--gold); padding-top: 5px; white-space: nowrap; }
+.card dd { margin: 0; }
+.card .btn { margin-top: 16px; }
+.tag { position: absolute; top: 18px; inset-inline-end: 18px; font-family: var(--kufi); font-size: 14px; font-weight: 700; color: var(--deep); background: var(--gold-light); padding: 1px 14px 3px; border-radius: 999px; }
+.note { color: var(--muted); font-size: 17px; margin: 22px 0 0; }
+
+/* الآية */
+.ayah blockquote { margin: 0; text-align: center; }
+.ayah p { font-size: clamp(26px, 4.4vw, 40px); font-weight: 700; line-height: 2.1; color: var(--gold-light); margin: 0 0 10px; }
+.ayah cite { font-family: var(--kufi); font-style: normal; font-size: 17px; color: var(--muted); }
+.ayah .wrap { padding-block: 56px; }
+
+/* الصور */
+.grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 12px 0 30px; }
+.grid figure { margin: 0; border-radius: 14px; overflow: hidden; border: 2px solid rgba(212, 175, 55, 0.5); }
+.grid figure.wide { grid-column: span 2; grid-row: span 2; }
+.grid img { width: 100%; height: 100%; aspect-ratio: 1; object-fit: cover; transition: transform 0.4s ease; }
+.grid figure:hover img { transform: scale(1.04); }
+
+/* التواصل */
+.contact { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-top: 10px; }
+.contact a { display: flex; flex-direction: column; gap: 2px; text-decoration: none; text-align: center; padding: 20px 12px; border-radius: 16px; border: 1px solid rgba(212, 175, 55, 0.4); background: rgba(5, 28, 20, 0.7); transition: border-color 0.15s ease, transform 0.15s ease; }
+.contact a:hover, .contact a:focus-visible { border-color: var(--gold); transform: translateY(-2px); }
+.contact b { font-family: var(--kufi); color: var(--gold); font-size: 17px; }
+.contact bdi, .contact span { font-size: 20px; font-weight: 700; color: var(--ivory); }
+.where { text-align: center; color: var(--muted); margin: 26px 0 0; }
+
+footer { text-align: center; padding: 30px 20px 90px; color: var(--muted); font-size: 17px; }
+footer img { width: auto; height: 52px; margin: 0 auto 8px; opacity: 0.9; }
+footer p { margin: 0; }
+
+.fab { position: fixed; inset-block-end: 20px; inset-inline-start: 20px; z-index: 20; width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: #25d366; color: #fff; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+
+:focus-visible { outline: 3px solid var(--gold-light); outline-offset: 3px; }
+
+@media (max-width: 820px) {
+  body { font-size: 19px; }
+  .wrap { padding: 52px 18px; }
+  .top nav { display: none; }
+  .top .btn { margin-inline-start: auto; }
+  .two { grid-template-columns: 1fr; gap: 30px; }
+  .arch { max-width: 420px; margin-inline: auto; }
+  .cards { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
+  .contact { grid-template-columns: repeat(2, 1fr); }
+  .contact a { padding-inline: 6px; }
+  .contact bdi, .contact span { font-size: 16px; }
+  .contact bdi { white-space: nowrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { transition: none !important; }
+}
