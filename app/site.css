@@ -1,0 +1,26 @@
+/* إضافات الموقع الفعلي فوق نظام التصميم في globals.css */
+.logo img { width: auto; }
+.strip a { color: inherit; }
+.split.even { grid-template-columns: 1fr 1fr; align-items: start; }
+.dark .steps::before { background: repeating-linear-gradient(90deg, var(--y) 0 8px, transparent 8px 16px); opacity: 0.6; }
+.dark .stp p { color: #c4c4c4; }
+.dark .stp .n { color: var(--k); }
+.cta > div:first-child { display: grid; gap: 6px; }
+.foot span { display: block; padding: 3px 0; }
+.prose { display: grid; gap: 16px; max-width: 860px; }
+.prose h2 { font-size: 20px; margin-bottom: 10px; }
+.prose ul { margin: 0; padding-inline-start: 22px; display: grid; gap: 6px; }
+.prose a { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
+a:focus-visible, .btn:focus-visible { outline: 3px solid var(--k); outline-offset: 3px; box-shadow: 0 0 0 6px var(--y); }
+
+@media (max-width: 900px) {
+  .split.even { grid-template-columns: 1fr; }
+  .pk div { flex: 1 1 40%; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .btn { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .btn:hover { transform: translateY(-1px); }
+  .card.course { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .card.course:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(11, 11, 12, 0.06), 0 18px 40px rgba(11, 11, 12, 0.12); }
+}
