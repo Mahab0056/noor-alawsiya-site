@@ -66,7 +66,7 @@ export const OPEN_COURSES = COURSES.filter((c) => c.status === 'open');
 export const DONE_COURSES = COURSES.filter((c) => c.status === 'done');
 export const MAHFAL_COURSES = DONE_COURSES.filter((c) => c.note?.includes('محفل'));
 
-/** الدورات الست المعروضة في الرئيسية، من الأحدث. */
+/** الدورات الست المعروضة في الرئيسية: أحدث ثلاث، ثم واحدة من كل جناح ونوع. */
 export const HOME_COURSES = [
   'دورة نغمية بالطريقة العراقية',
   'دورة السيدة نرجس (ع)',
@@ -76,10 +76,23 @@ export const HOME_COURSES = [
   'دورة فاطمة الزهراء (ع)',
 ].map((n) => COURSES.find((c) => c.name === n)!);
 
+// رقم الهاتف هو رقم المدرسة المنشور في صفحتها، ورقم واتساب هو المربوط بالصفحة للتسجيل (رقمان مختلفان عمداً).
 export const CONTACT = {
   phone: '0770 289 7973',
   phoneHref: 'tel:+9647702897973',
   whatsapp: 'https://wa.me/9647729841000',
   facebook: 'https://www.facebook.com/profile.php?id=61586077422709',
   instagram: 'https://www.instagram.com/noor.awsiya',
+  youtube: 'https://www.youtube.com/@noor.awsiya',
 };
+
+/** سنة أحدث دورة في السجل (بالأرقام العربية)، لوسم «جديد». */
+export const LATEST_YEAR = COURSES.map((c) => c.start?.match(/[٠-٩]{4}/)?.[0] ?? '').sort().at(-1) ?? '';
+
+const AR = new Intl.NumberFormat('ar-EG', { useGrouping: false });
+export const ar = (n: number) => AR.format(n);
+
+/** «٣ دورات» للأعداد من ٣ إلى ١٠، و«٢٠ دورة» لما فوقها، كما في العربية. */
+export function countOf(n: number, plural: string, singular: string) {
+  return `${ar(n)} ${n >= 3 && n <= 10 ? plural : singular}`;
+}

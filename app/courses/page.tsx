@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
 import { NotStated, TeacherGrid } from '@/components/Cards';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
-import { COURSES, DONE_COURSES, OPEN_COURSES, TEACHERS, type CourseStatus } from '@/lib/data';
+import { ar, countOf, COURSES, DONE_COURSES, OPEN_COURSES, TEACHERS, type CourseStatus } from '@/lib/data';
 
 export const metadata: Metadata = {
   title: 'الدورات والأساتذة',
   description: 'سجل دورات مدرسة نور الأوصياء منذ ٢٠٢١: الدورات القائمة والمتخرجة، أساتذتها وأماكنها وتواريخها.',
 };
-
-const ar = (n: number) => n.toLocaleString('ar-EG');
 
 function Status({ status }: { status: CourseStatus }) {
   if (status === 'open')
@@ -32,12 +30,12 @@ export default function CoursesPage() {
   return (
     <>
       <SiteHeader current="courses" />
-      <main>
+      <main id="main">
         <section className="phead">
           <div className="wrap">
             <p className="eye">سجل المدرسة</p>
             <h1>الدورات والأساتذة</h1>
-            <p>عشرون دورة منذ ٢٠٢١ في التجويد والقراءة التحقيقية والنغم القرآني، بين البلديات وحي طارق ومدينة الصدر.</p>
+            <p>{countOf(COURSES.length, 'دورات', 'دورة')} منذ ٢٠٢١ في التجويد والقراءة التحقيقية والنغم القرآني، بين البلديات وحي طارق ومدينة الصدر.</p>
             <div className="pk">
               {facts.map(([value, label]) => (
                 <div key={label}>
@@ -51,7 +49,7 @@ export default function CoursesPage() {
 
         <section className="sec" style={{ paddingTop: 40 }}>
           <div className="wrap">
-            <div className="card" style={{ overflow: 'hidden' }}>
+            <div className="card tw">
               <table className="rec">
                 <thead>
                   <tr>
@@ -94,7 +92,7 @@ export default function CoursesPage() {
             <div className="sec-h">
               <div>
                 <p className="eye">الأساتذة</p>
-                <h2>أربعة عشر أستاذاً وقارئاً</h2>
+                <h2>{ar(TEACHERS.length)} أستاذاً وقارئاً</h2>
               </div>
             </div>
             <TeacherGrid />

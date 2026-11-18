@@ -41,7 +41,7 @@ export default function PrivacyPage() {
   return (
     <>
       <SiteHeader current="privacy" />
-      <main>
+      <main id="main">
         <section className="phead">
           <div className="wrap">
             <p className="eye">مدرسة نور الأوصياء</p>
@@ -65,7 +65,7 @@ export default function PrivacyPage() {
               <h2>للتواصل بخصوص بياناتك</h2>
               <p>
                 راسل إدارة المدرسة على{' '}
-                <a href={CONTACT.whatsapp} target="_blank" rel="noopener">
+                <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
                   واتساب
                 </a>{' '}
                 أو اتصل على{' '}

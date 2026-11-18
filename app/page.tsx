@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { CourseCard, TeacherGrid } from '@/components/Cards';
 import { Icon } from '@/components/Icon';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
-import { CONTACT, COURSES, DONE_COURSES, HOME_COURSES, MAHFAL_COURSES, OPEN_COURSES, TEACHERS } from '@/lib/data';
+import { ar, CONTACT, countOf, COURSES, DONE_COURSES, HOME_COURSES, MAHFAL_COURSES, OPEN_COURSES, TEACHERS } from '@/lib/data';
 import type { IconName } from '@/lib/icons';
 
 const STATS: { icon: IconName; value: number; label: string }[] = [
@@ -23,19 +23,17 @@ const STEPS: { icon: IconName; title: string; text: string }[] = [
 const TIMELINE: [string, string][] = [
   ['٢٠٢١', 'انطلاق أولى الدورات: زين العابدين (ع)، خاتم المرسلين (ص)، والصديقة الكبرى (ع) للقراءة التحقيقية.'],
   ['٢٠٢٢', 'تخرّج دورة خاتم المرسلين (ص) بخمسة طلاب، وانطلاق دورة قطيع الكفين (ع) للنغم القرآني.'],
-  ['٢٠٢٣', 'دورة الإمام الجواد (ع) للقراءة التحقيقية بالتعاون مع معهد القرآن الكريم، ودورتا تجويد في مدينة الصدر.'],
-  ['٢٠٢٤', 'افتتاح جناح حي طارق، ودورات أبي الفضل العباس (ع) للنغم، أئمة البقيع (ع)، والإمام المنتظر (عج).'],
+  ['٢٠٢٣', 'دورة الإمام الجواد (ع) للقراءة التحقيقية بالتعاون مع معهد القرآن الكريم، ودورتا قطيع الكفين (ع) وباب المراد لأحكام التلاوة والتجويد.'],
+  ['٢٠٢٤', 'دورتا فاطمة الزهراء (ع) والحسن المجتبى (ع) في جناح حي طارق، ودورات أبي الفضل العباس (ع) للنغم، أئمة البقيع (ع)، والإمام المنتظر (عج).'],
   ['٢٠٢٥', 'إجازة خمسة قرّاء بقراءة عاصم الكوفي بعد اختبار مدير المدرسة، ثم محفل التخرّج في أيلول.'],
   ['٢٠٢٦', 'دورات سكينة (ع) والسيدة نرجس (ع)، ودورة النغم بالطريقة العراقية مع الشيخ عباس المنشداوي.'],
 ];
-
-const ar = (n: number) => n.toLocaleString('ar-EG');
 
 export default function Home() {
   return (
     <>
       <SiteHeader current="home" />
-      <main>
+      <main id="main">
         <section className="hero">
           <div className="wrap">
             <div>
@@ -50,7 +48,7 @@ export default function Home() {
               </h1>
               <p className="lead">حلقات في جوامع وحسينيات البلديات وحي طارق ومدينة الصدر، على يد قرّاء وأساتذة متخصصين، بإشراف الشيخ المقرئ قاسم الكناني.</p>
               <div className="acts">
-                <a className="btn y" href={CONTACT.whatsapp} target="_blank" rel="noopener">
+                <a className="btn y" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
                   سجّل عبر واتساب <Icon name="chev" size="s" />
                 </a>
                 <Link className="btn g" href="/courses">
@@ -74,7 +72,7 @@ export default function Home() {
             </div>
             <div className="stage">
               <div className="arch">
-                <Image src="/img/m1.jpg" alt="حلقة قرآنية في الجامع" fill sizes="(max-width: 900px) 84vw, 440px" priority />
+                <Image src="/img/mushaf.jpg" alt="مصحف مفتوح على حامله في الجامع" fill sizes="(max-width: 900px) 84vw, 440px" priority />
               </div>
               <div className="float a">
                 <span className="ic">
@@ -92,7 +90,7 @@ export default function Home() {
                 </span>
                 <span>
                   <span className="mute">محفل التخرّج ٢٠٢٥</span>
-                  <b>ست دورات تخرّجت</b>
+                  <b>{countOf(MAHFAL_COURSES.length, 'دورات', 'دورة')} تخرّجت</b>
                   في ١٢ أيلول
                 </span>
               </div>
@@ -121,7 +119,7 @@ export default function Home() {
             <div className="sec-h">
               <div>
                 <p className="eye">الدورات القائمة</p>
-                <h2>عشر دورات مفتوحة الآن</h2>
+                <h2>{countOf(OPEN_COURSES.length, 'دورات', 'دورة')} مفتوحة الآن</h2>
               </div>
             </div>
             <div className="g3">
@@ -131,7 +129,7 @@ export default function Home() {
             </div>
             <p style={{ textAlign: 'center', marginTop: 26 }}>
               <Link className="btn o" href="/courses">
-                عرض الدورات العشرين في سجل المدرسة <Icon name="chev" size="s" />
+                عرض سجل المدرسة كاملاً ({countOf(COURSES.length, 'دورات', 'دورة')}) <Icon name="chev" size="s" />
               </Link>
             </p>
           </div>
@@ -166,7 +164,7 @@ export default function Home() {
             <div className="sec-h">
               <div>
                 <p className="eye">سجل المدرسة</p>
-                <h2>ست سنوات من الحلقات والتخرّج</h2>
+                <h2>من ٢٠٢١ إلى اليوم: حلقات وتخرّج</h2>
               </div>
             </div>
             <div className="split even">
@@ -174,7 +172,7 @@ export default function Home() {
                 <div className="mh">
                   <span className="tag y">محفل التخرّج</span>
                   <h3>١٢ أيلول ٢٠٢٥</h3>
-                  <p>بمناسبة ولادة النبي الأكرم محمد (ص) وحفيده الإمام الصادق (ع)، تخرّجت ست دورات في محفل واحد.</p>
+                  <p>بمناسبة ولادة النبي الأكرم محمد (ص) وحفيده الإمام الصادق (ع)، تخرّجت {countOf(MAHFAL_COURSES.length, 'دورات', 'دورة')} في محفل واحد.</p>
                 </div>
                 <div className="list">
                   {MAHFAL_COURSES.map((c) => (
@@ -212,7 +210,7 @@ export default function Home() {
             <div className="sec-h">
               <div>
                 <p className="eye">الأساتذة</p>
-                <h2>أربعة عشر أستاذاً وقارئاً</h2>
+                <h2>{ar(TEACHERS.length)} أستاذاً وقارئاً</h2>
               </div>
             </div>
             <TeacherGrid />
@@ -232,7 +230,7 @@ export default function Home() {
                 <p>راسل المدرسة على واتساب واذكر الدورة التي تريدها، وتردّ عليك الإدارة.</p>
               </div>
               <div className="sp">
-                <a className="btn y" href={CONTACT.whatsapp} target="_blank" rel="noopener">
+                <a className="btn y" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
                   <Icon name="msg" size="s" />
                   راسلنا على واتساب
                 </a>

@@ -10,6 +10,8 @@ const NAV: { key: NavKey; href: string; label: string }[] = [
   { key: 'courses', href: '/courses', label: 'الدورات والأساتذة' },
 ];
 
+const EXT = { target: '_blank', rel: 'noopener noreferrer' } as const;
+
 export function Logo({ mark = 'black', sub = 'للدراسات القرآنية' }: { mark?: 'black' | 'yellow'; sub?: string }) {
   return (
     <Link className="logo" href="/">
@@ -24,6 +26,9 @@ export function Logo({ mark = 'black', sub = 'للدراسات القرآنية'
 export function SiteHeader({ current }: { current: NavKey }) {
   return (
     <>
+      <a className="skip" href="#main">
+        تخطَّ إلى المحتوى
+      </a>
       <div className="strip">
         <div className="wrap">
           <span>
@@ -51,7 +56,7 @@ export function SiteHeader({ current }: { current: NavKey }) {
             <a href="#contact">تواصل</a>
           </nav>
           <div className="acts">
-            <a className="btn k sm" href={CONTACT.whatsapp} target="_blank" rel="noopener">
+            <a className="btn k sm" href={CONTACT.whatsapp} {...EXT}>
               سجّل الآن
             </a>
           </div>
@@ -78,10 +83,13 @@ export function SiteFooter() {
           </div>
           <div>
             <h4>تابعنا</h4>
-            <a href={CONTACT.facebook} target="_blank" rel="noopener">
+            <a href={CONTACT.youtube} {...EXT}>
+              يوتيوب
+            </a>
+            <a href={CONTACT.facebook} {...EXT}>
               فيسبوك
             </a>
-            <a href={CONTACT.instagram} target="_blank" rel="noopener">
+            <a href={CONTACT.instagram} {...EXT}>
               إنستغرام
             </a>
           </div>
@@ -90,7 +98,7 @@ export function SiteFooter() {
             <a className="num" href={CONTACT.phoneHref}>
               {CONTACT.phone}
             </a>
-            <a href={CONTACT.whatsapp} target="_blank" rel="noopener">
+            <a href={CONTACT.whatsapp} {...EXT}>
               واتساب
             </a>
             <span>بغداد · البلديات وحي طارق</span>

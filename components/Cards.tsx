@@ -1,15 +1,12 @@
 import { Icon } from './Icon';
 import type { IconName } from '@/lib/icons';
-import { CONTACT, KIND_TAG, TEACHERS, type Course, type CourseKind } from '@/lib/data';
+import { CONTACT, KIND_TAG, LATEST_YEAR, TEACHERS, type Course, type CourseKind } from '@/lib/data';
 
 const KIND_ICON: Record<CourseKind, IconName> = { tajweed: 'book', tahqiq: 'cert', nagham: 'mic' };
 
-/** First teacher of a course, without the honorific, for the avatar line. */
-function leadTeacher(teacher: string) {
-  return teacher
-    .split('،')[0]
-    .replace(/^(الشيخ|الأستاذ|السيد)\s+/, '')
-    .trim();
+/** Initial for the avatar: first letter of the first teacher's name, after the honorific. */
+function initial(teacher: string) {
+  return teacher.replace(/^(الشيخ|الأستاذ|السيد|القارئ)\s+/, '').trim()[0];
 }
 
 export function NotStated() {
@@ -17,8 +14,7 @@ export function NotStated() {
 }
 
 export function CourseCard({ course }: { course: Course }) {
-  const lead = leadTeacher(course.teacher);
-  const isNew = course.start?.includes('٢٠٢٦');
+  const isNew = LATEST_YEAR !== '' && course.start?.includes(LATEST_YEAR);
   return (
     <article className="card course">
       <div className="hd">
@@ -30,7 +26,7 @@ export function CourseCard({ course }: { course: Course }) {
           {course.kind ? <span className="tag">{KIND_TAG[course.kind]}</span> : null}
         </div>
         <h3>{course.name}</h3>
-        <p>{course.kindLabel}</p>
+        <p>{course.kindLabel ?? 'نوع الدورة غير مذكور'}</p>
       </div>
       <div className="bd">
         <div>
@@ -45,15 +41,15 @@ export function CourseCard({ course }: { course: Course }) {
       <div className="ft">
         <div className="t">
           <span className="av y" aria-hidden="true">
-            {lead[0]}
+            {initial(course.teacher)}
           </span>
           <span>
-            <span className="mute">الأستاذ</span>
+            <span className="mute">بإشراف</span>
             <br />
-            <b>{lead}</b>
+            <b>{course.teacher}</b>
           </span>
         </div>
-        <a className="btn k sm" href={CONTACT.whatsapp} target="_blank" rel="noopener" aria-label={`سجّل في ${course.name}`}>
+        <a className="btn k sm" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer" aria-label={`سجّل في ${course.name} عبر واتساب`}>
           سجّل
         </a>
       </div>
