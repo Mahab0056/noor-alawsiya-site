@@ -23,7 +23,7 @@ export function Logo({ mark = 'black', sub = 'للدراسات القرآنية'
   );
 }
 
-export function SiteHeader({ current }: { current: NavKey }) {
+export function SiteHeader({ current }: { current?: NavKey }) {
   return (
     <>
       <a className="skip" href="#main">
@@ -54,11 +54,12 @@ export function SiteHeader({ current }: { current: NavKey }) {
               </Link>
             ))}
             <a href="#contact">تواصل</a>
+            <Link href="/login">دخول الطلاب</Link>
           </nav>
           <div className="acts">
-            <a className="btn k sm" href={CONTACT.whatsapp} {...EXT}>
+            <Link className="btn k sm" href="/register">
               سجّل الآن
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -79,6 +80,8 @@ export function SiteFooter() {
             <h4>المدرسة</h4>
             <Link href="/">الرئيسية</Link>
             <Link href="/courses">الدورات والأساتذة</Link>
+            <Link href="/register">التسجيل</Link>
+            <Link href="/login">دخول الطلاب</Link>
             <Link href="/privacy">سياسة الخصوصية</Link>
           </div>
           <div>

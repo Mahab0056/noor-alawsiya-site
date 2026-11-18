@@ -1,5 +1,6 @@
 import 'server-only';
-import { hashPassword, MIN_PASSWORD, normalizePhone } from './auth';
+import { hashPassword, normalizePhone } from './auth';
+import { isMinor, isVisible, MAX_TEXT, MIN_PASSWORD, NO, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
 import type { Db } from './db';
 
 /**
@@ -7,11 +8,8 @@ import type { Db } from './db';
  * and creating the student, the registration and its answers in one transaction.
  */
 
-export type QuestionKind = 'single' | 'multi' | 'yes_no' | 'text';
-export type ShowIf = { question_id: number; equals: string } | null;
-export type FormQuestion = { id: number; label: string; kind: QuestionKind; options: string[]; required: boolean; position: number; showIf: ShowIf; active: boolean };
-export type Answers = Record<string, string | string[] | undefined>;
-export type OpenCourse = { id: number; name: string; kind: string | null; teacher: string; place: string | null };
+export { ADULT_AGE, MAX_TEXT, YES, NO, isMinor, isVisible } from './form-rules';
+export type { Answers, FieldErrors, FormQuestion, OpenCourse, QuestionKind, ShowIf } from './form-rules';
 
 export type RegistrationInput = {
   fullName: string;
@@ -24,13 +22,6 @@ export type RegistrationInput = {
   courseId: string;
   answers: Answers;
 };
-
-export type FieldErrors = Record<string, string>;
-
-export const ADULT_AGE = 18; // من زاد فرق السنة عنده على 18 بالغ؛ يطابق قيد minors_need_guardian في قاعدة البيانات
-export const MAX_TEXT = 500;
-
-export const isMinor = (birthYear: number, now = new Date()) => now.getFullYear() - birthYear <= ADULT_AGE;
 
 type QuestionRow = { id: string; label: string; kind: QuestionKind; options: string[]; required: boolean; position: number; show_if: ShowIf; active: boolean };
 const toQuestion = (r: QuestionRow): FormQuestion => ({ id: Number(r.id), label: r.label, kind: r.kind, options: r.options ?? [], required: r.required, position: r.position, showIf: r.show_if, active: r.active });
@@ -46,16 +37,6 @@ export async function listOpenCourses(db: Db) {
   );
   return rows.map((r): OpenCourse => ({ ...r, id: Number(r.id) }));
 }
-
-/** A question is asked when it has no condition, or its condition's question was answered with that value. */
-export function isVisible(q: FormQuestion, answers: Answers) {
-  if (!q.showIf) return true;
-  const other = answers[String(q.showIf.question_id)];
-  return Array.isArray(other) ? other.includes(q.showIf.equals) : other === q.showIf.equals;
-}
-
-export const YES = 'نعم';
-export const NO = 'لا';
 
 /** Checks the answers against the questionnaire and returns only the answers that should be stored. */
 export function validateAnswers(questions: FormQuestion[], answers: Answers) {
@@ -101,7 +82,7 @@ export function validateStudent(input: RegistrationInput, now = new Date()) {
   if (fullName.length < 5 || fullName.split(' ').length < 2) errors.fullName = 'اكتب الاسم الثنائي على الأقل.';
   else if (fullName.length > 80) errors.fullName = 'الاسم طويل جداً.';
 
-  const birthYear = Number(input.birthYear.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))));
+  const birthYear = toYear(input.birthYear);
   const year = now.getFullYear();
   if (!Number.isInteger(birthYear) || birthYear < year - 90 || birthYear > year - 5) errors.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
 

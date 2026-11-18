@@ -48,9 +48,9 @@ export default function Home() {
               </h1>
               <p className="lead">حلقات في جوامع وحسينيات البلديات وحي طارق ومدينة الصدر، على يد قرّاء وأساتذة متخصصين، بإشراف الشيخ المقرئ قاسم الكناني.</p>
               <div className="acts">
-                <a className="btn y" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
-                  سجّل عبر واتساب <Icon name="chev" size="s" />
-                </a>
+                <Link className="btn y" href="/register">
+                  سجّل الآن <Icon name="chev" size="s" />
+                </Link>
                 <Link className="btn g" href="/courses">
                   تصفّح الدورات
                 </Link>
@@ -227,12 +227,15 @@ export default function Home() {
             <div className="cta">
               <div>
                 <h2>التسجيل مفتوح في الدورات القائمة</h2>
-                <p>راسل المدرسة على واتساب واذكر الدورة التي تريدها، وتردّ عليك الإدارة.</p>
+                <p>سجّل من الموقع وتابع طلبك من حسابك، أو راسل المدرسة على واتساب.</p>
               </div>
               <div className="sp">
-                <a className="btn y" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
+                <Link className="btn y" href="/register">
+                  سجّل الآن
+                </Link>
+                <a className="btn g" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
                   <Icon name="msg" size="s" />
-                  راسلنا على واتساب
+                  واتساب
                 </a>
                 <a className="btn g" href={CONTACT.phoneHref}>
                   <Icon name="phone" size="s" />

@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "tsx --conditions=react-server --test tests/*.test.ts",
-    "migrate": "tsx --conditions=react-server scripts/migrate.ts"
+    "migrate": "tsx --conditions=react-server scripts/migrate.ts",
+    "seed": "tsx --conditions=react-server scripts/seed.ts",
+    "create-admin": "tsx --conditions=react-server scripts/create-admin.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.16",

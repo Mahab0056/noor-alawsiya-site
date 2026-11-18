@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Icon } from './Icon';
 import type { IconName } from '@/lib/icons';
 import { CONTACT, KIND_TAG, LATEST_YEAR, TEACHERS, type Course, type CourseKind } from '@/lib/data';
@@ -49,9 +50,15 @@ export function CourseCard({ course }: { course: Course }) {
             <b>{course.teacher}</b>
           </span>
         </div>
-        <a className="btn k sm" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer" aria-label={`سجّل في ${course.name} عبر واتساب`}>
-          سجّل
-        </a>
+        {course.status === 'open' ? (
+          <Link className="btn k sm" href={`/register?course=${encodeURIComponent(course.name)}`} aria-label={`سجّل في ${course.name}`}>
+            سجّل
+          </Link>
+        ) : (
+          <a className="btn o sm" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer" aria-label={`اسأل عن ${course.name} عبر واتساب`}>
+            اسأل
+          </a>
+        )}
       </div>
     </article>
   );

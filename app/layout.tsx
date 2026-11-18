@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import { Amiri, Aref_Ruqaa, IBM_Plex_Sans_Arabic } from 'next/font/google';
 import './globals.css';
 import './site.css';
+import './portal.css';
+import './forms.css';
 
 const ui = IBM_Plex_Sans_Arabic({ variable: '--font-ui', subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700'] });
 const quran = Amiri({ variable: '--font-quran', subsets: ['arabic'], weight: ['400', '700'] });

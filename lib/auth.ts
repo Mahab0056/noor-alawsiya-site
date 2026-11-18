@@ -10,7 +10,7 @@ import type { Db } from './db';
 
 // ---------------------------------------------------------------- passwords (argon2id)
 
-export const MIN_PASSWORD = 8;
+export { MIN_PASSWORD } from './form-rules';
 
 export const hashPassword = (password: string) => hash(password, { memoryCost: 19456, timeCost: 2, parallelism: 1 });
 

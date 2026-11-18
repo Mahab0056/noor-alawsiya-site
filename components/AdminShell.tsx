@@ -1,0 +1,62 @@
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { adminLogoutAction } from '@/app/admin/actions';
+import type { AdminProfile } from '@/lib/accounts';
+import { ar } from '@/lib/data';
+import { Icon } from './Icon';
+import { Logo } from './SiteChrome';
+
+type Key = 'requests' | 'form';
+
+/** Side navigation and top bar around every admin screen. Lists only the screens that exist. */
+export function AdminShell({ admin, current, pending, children }: { admin: AdminProfile; current: Key; pending: number; children: ReactNode }) {
+  const links = (
+    <>
+      <Link href="/admin" className={current === 'requests' ? 'on' : undefined} aria-current={current === 'requests' ? 'page' : undefined}>
+        <Icon name="inbox" />
+        طلبات التسجيل
+        {pending > 0 ? <b>{ar(pending)}</b> : null}
+      </Link>
+      <Link href="/admin/form" className={current === 'form' ? 'on' : undefined} aria-current={current === 'form' ? 'page' : undefined}>
+        <Icon name="list" />
+        استبيان التسجيل
+      </Link>
+    </>
+  );
+  return (
+    <div className="app">
+      <aside className="side">
+        <Logo mark="yellow" sub="لوحة الإدارة" />
+        <nav aria-label="أقسام لوحة الإدارة">{links}</nav>
+        <div className="me">
+          <span className="av y" aria-hidden="true">
+            {admin.name.trim()[0]}
+          </span>
+          <div>
+            <b>{admin.name}</b>
+            <br />
+            <span>تحقق بخطوتين مفعّل</span>
+          </div>
+        </div>
+      </aside>
+      <div className="main">
+        <div className="top">
+          <div className="mtop">
+            <Logo sub="لوحة الإدارة" />
+          </div>
+          <form className="sp" action={adminLogoutAction}>
+            <button className="btn w sm" type="submit">
+              تسجيل الخروج
+            </button>
+          </form>
+        </div>
+        <nav className="mnav" aria-label="أقسام لوحة الإدارة">
+          {links}
+        </nav>
+        <main className="body" id="main">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}
