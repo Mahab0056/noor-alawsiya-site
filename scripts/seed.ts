@@ -39,10 +39,10 @@ async function main() {
       ]);
       return Number(row.id);
     };
-    await add(1, 'ما مستواك الحالي في تلاوة القرآن الكريم؟', 'single', ['مبتدئ، أتهجّى الكلمات', 'أقرأ بطلاقة بلا أحكام التجويد', 'أتقن أحكام التجويد'], true);
-    const before = await add(2, 'هل درست في دورة قرآنية من قبل؟', 'yes_no', [], true);
+    await add(1, 'ما مستوى الطالب الحالي في تلاوة القرآن الكريم؟', 'single', ['مبتدئ، يتهجّى الكلمات', 'يقرأ بطلاقة بلا أحكام التجويد', 'يتقن أحكام التجويد'], true);
+    const before = await add(2, 'هل درس الطالب في دورة قرآنية من قبل؟', 'yes_no', [], true);
     await add(3, 'اذكر اسم الدورة السابقة ومكانها', 'text', [], false, { question_id: before, equals: 'نعم' });
-    await add(4, 'ما الأيام التي تناسبك للحضور؟', 'multi', DAYS, false);
+    await add(4, 'ما الأيام المناسبة للحضور؟', 'multi', DAYS, false);
     console.log('questionnaire: added 4 starter questions');
   } else console.log('questionnaire: already present, skipped');
 

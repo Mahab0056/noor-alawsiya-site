@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { loginStudent } from '@/lib/accounts';
-import { isThrottled, recordAttempt } from '@/lib/auth';
+import { allowRegistration } from '@/lib/auth';
 import { getDb } from '@/lib/db';
 import { register, type Answers, type FieldErrors } from '@/lib/registration';
 import { clientIp, endSession, startSession } from '@/lib/session';
@@ -21,11 +21,10 @@ export async function registerAction(_prev: RegisterState, form: FormData): Prom
     const all = form.getAll(key).filter((v): v is string => typeof v === 'string');
     answers[key.slice(1)] = all.length > 1 ? all : all[0];
   }
-  // Each stored registration counts against the address it came from, so one connection cannot flood the admin's inbox.
+  // Every submission counts against the address it came from, whether or not it is stored. That keeps one
+  // connection from flooding the admin's inbox, and from probing which name and phone pairs already have accounts.
   const db = await getDb();
-  const ip = await clientIp();
-  const bucket = `register:${ip}`;
-  if (await isThrottled(db, 'student', bucket, ip)) return { errors: { form: 'طلبات كثيرة من هذا الاتصال. حاول بعد ربع ساعة.' } };
+  if (!(await allowRegistration(db, await clientIp()))) return { errors: { form: 'طلبات كثيرة من هذا الاتصال. حاول بعد ساعة، أو تواصل مع إدارة المدرسة.' } };
   const result = await register(db, {
     fullName: text(form, 'fullName'),
     birthYear: text(form, 'birthYear'),
@@ -38,7 +37,6 @@ export async function registerAction(_prev: RegisterState, form: FormData): Prom
     answers,
   });
   if (!result.ok) return { errors: result.errors };
-  await recordAttempt(db, 'student', bucket, ip, false);
   await startSession('student', result.studentId);
   redirect('/account');
 }

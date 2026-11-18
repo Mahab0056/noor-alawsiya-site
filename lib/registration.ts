@@ -1,6 +1,6 @@
 import 'server-only';
 import { hashPassword, normalizePhone } from './auth';
-import { isMinor, isVisible, MAX_TEXT, MIN_PASSWORD, NO, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
+import { isMinor, MAX_ACCOUNTS_PER_PHONE, visibleQuestions, MAX_NAME, MAX_TEXT, MIN_PASSWORD, NO, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
 import type { Db } from './db';
 
 /**
@@ -42,8 +42,7 @@ export async function listOpenCourses(db: Db) {
 export function validateAnswers(questions: FormQuestion[], answers: Answers) {
   const errors: FieldErrors = {};
   const clean: Record<number, string | string[]> = {};
-  for (const q of questions) {
-    if (!isVisible(q, answers)) continue; // hidden questions are ignored even if a value was posted
+  for (const q of visibleQuestions(questions, answers)) { // hidden questions are ignored even if a value was posted
     const key = `q${q.id}`;
     const raw = answers[String(q.id)];
     const empty = raw === undefined || raw === '' || (Array.isArray(raw) && raw.length === 0);
@@ -80,16 +79,17 @@ export function validateStudent(input: RegistrationInput, now = new Date()) {
   const errors: FieldErrors = {};
   const fullName = input.fullName.trim().replace(/\s+/g, ' ');
   if (fullName.length < 5 || fullName.split(' ').length < 2) errors.fullName = 'اكتب الاسم الثنائي على الأقل.';
-  else if (fullName.length > 80) errors.fullName = 'الاسم طويل جداً.';
+  else if (fullName.length > MAX_NAME) errors.fullName = 'الاسم طويل جداً.';
 
   const birthYear = toYear(input.birthYear);
   const year = now.getFullYear();
-  if (!Number.isInteger(birthYear) || birthYear < year - 90 || birthYear > year - 5) errors.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
+  if (!Number.isInteger(birthYear)) errors.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
+  else if (birthYear < year - 90 || birthYear > year - 5) errors.birthYear = 'سنة الميلاد غير صحيحة.';
 
   const phone = normalizePhone(input.phone);
   if (!phone) errors.phone = 'اكتب رقم هاتف عراقياً صحيحاً، مثل 07701234567.';
 
-  if (input.password.length < MIN_PASSWORD) errors.password = `كلمة المرور ${MIN_PASSWORD} أحرف على الأقل.`;
+  if (input.password.length < MIN_PASSWORD) errors.password = 'كلمة المرور ٨ خانات على الأقل.';
   else if (input.password.length > 200) errors.password = 'كلمة المرور طويلة جداً.';
 
   const minor = !errors.birthYear && isMinor(birthYear, now);
@@ -98,6 +98,7 @@ export function validateStudent(input: RegistrationInput, now = new Date()) {
   if (minor) {
     guardianName = input.guardianName.trim().replace(/\s+/g, ' ');
     if (guardianName.length < 5) errors.guardianName = 'اكتب اسم ولي الأمر.';
+    else if (guardianName.length > MAX_NAME) errors.guardianName = 'الاسم طويل جداً.';
     guardianPhone = normalizePhone(input.guardianPhone);
     if (!guardianPhone) errors.guardianPhone = 'اكتب رقم هاتف ولي الأمر.';
     if (!input.guardianConsent) errors.guardianConsent = 'التسجيل لمن هو دون ١٨ سنة يحتاج موافقة ولي الأمر.';
@@ -122,11 +123,13 @@ export async function register(db: Db, input: RegistrationInput): Promise<Regist
   if (Object.keys(errors).length) return { ok: false, errors };
 
   const s = student.clean;
-  const [exists] = await db.query('select 1 from students where phone = $1 and full_name = $2', [s.phone, s.fullName]);
-  if (exists) return { ok: false, errors: { phone: 'يوجد حساب بهذا الاسم ورقم الهاتف. سجّل الدخول لمتابعة طلبك.' } };
+  const EXISTS = { ok: false as const, errors: { phone: 'يوجد حساب بهذا الاسم ورقم الهاتف. سجّل الدخول لمتابعة طلبك.' } };
+  const onPhone = await db.query<{ full_name: string }>('select full_name from students where phone = $1', [s.phone]);
+  if (onPhone.some((r) => r.full_name === s.fullName)) return EXISTS;
+  if (onPhone.length >= MAX_ACCOUNTS_PER_PHONE) return { ok: false, errors: { phone: 'وصل هذا الرقم إلى الحد الأقصى من الحسابات. تواصل مع إدارة المدرسة.' } };
 
   const passwordHash = await hashPassword(input.password);
-  return db.tx(async (t) => {
+  const store = () => db.tx(async (t) => {
     const [st] = await t.query<{ id: string }>(
       `insert into students (full_name, birth_year, phone, password_hash, guardian_name, guardian_phone, guardian_consent_at, consent_version)
        values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
@@ -138,6 +141,13 @@ export async function register(db: Db, input: RegistrationInput): Promise<Regist
     }
     return { ok: true as const, studentId: Number(st.id), registrationId: Number(reg.id) };
   });
+  try {
+    return await store();
+  } catch (e) {
+    // Two submissions of the same name and phone at once: the second loses to the unique constraint.
+    if ((e as { code?: string }).code === '23505') return EXISTS;
+    throw e;
+  }
 }
 
 export type RegistrationStatus = 'pending' | 'accepted' | 'rejected';

@@ -19,14 +19,16 @@ export function LoginForm() {
         </p>
       ) : null}
       <Field id="phone" label="رقم الهاتف">
-        <input {...fieldProps('phone')} className="inp ltr" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} required />
+        <input {...fieldProps('phone', { required: true, ltr: true })} type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} maxLength={20} />
       </Field>
       <Field id="password" label="كلمة المرور">
-        <input {...fieldProps('password')} className="inp ltr" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={200} required />
+        <input {...fieldProps('password', { required: true, ltr: true })} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={200} />
       </Field>
       {state?.names ? (
         <fieldset className="field">
-          <legend className="lbl">أكثر من طالب مسجّل بهذا الرقم. اختر اسمك:</legend>
+          <legend className="lbl" role="status">
+            أكثر من طالب مسجّل بهذا الرقم. اختر الاسم ثم اضغط «دخول»:
+          </legend>
           <div className="opts">
             {state.names.map((name, i) => (
               <label className="opt" key={name}>
@@ -56,13 +58,13 @@ export function AdminLoginForm() {
         </p>
       ) : null}
       <Field id="email" label="البريد الإلكتروني">
-        <input {...fieldProps('email')} className="inp ltr" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} required />
+        <input {...fieldProps('email', { required: true, ltr: true })} type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} />
       </Field>
       <Field id="password" label="كلمة المرور">
-        <input {...fieldProps('password')} className="inp ltr" type="password" autoComplete="current-password" maxLength={200} required />
+        <input {...fieldProps('password', { required: true, ltr: true })} type="password" autoComplete="current-password" maxLength={200} />
       </Field>
       <Field id="code" label="رمز التحقق" hint="ستة أرقام من تطبيق المصادقة">
-        <input {...fieldProps('code', undefined, 'hint')} className="inp ltr" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required />
+        <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
       </Field>
       <button className="btn k" type="submit" disabled={pending}>
         {pending ? 'جارٍ الدخول…' : 'دخول الإدارة'}

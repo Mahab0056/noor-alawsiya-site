@@ -47,6 +47,8 @@ async function Builder() {
           <ol className="qlist">
             {questions.map((q, i) => {
               const cond = q.showIf ? byId.get(q.showIf.question_id) : null;
+              // A conditional question only works while the question it depends on is active and comes before it.
+              const broken = q.showIf && (!cond || !cond.active || questions.indexOf(cond) > i);
               return (
                 <li className={`qrow${q.active ? '' : ' off'}`} key={q.id}>
                   <span className="qn">{ar(i + 1)}</span>
@@ -62,15 +64,16 @@ async function Builder() {
                           يظهر إذا كانت إجابة «{cond?.label ?? 'سؤال غير موجود'}» هي «{q.showIf.equals}»
                         </span>
                       ) : null}
+                      {broken ? <span className="tag warn">لن يظهر: السؤال المرتبط به معطّل أو يأتي بعده</span> : null}
                     </div>
                   </div>
                   <div className="sp">
                     <form action={moveQuestionAction}>
                       <input type="hidden" name="id" value={q.id} />
-                      <button className="btn w sm" name="direction" value="up" disabled={i === 0} aria-label={`تقديم السؤال ${ar(i + 1)}`}>
+                      <button className="btn w sm" name="direction" value="up" disabled={i === 0} aria-label={`نقل السؤال ${ar(i + 1)} إلى أعلى`}>
                         أعلى
                       </button>{' '}
-                      <button className="btn w sm" name="direction" value="down" disabled={i === questions.length - 1} aria-label={`تأخير السؤال ${ar(i + 1)}`}>
+                      <button className="btn w sm" name="direction" value="down" disabled={i === questions.length - 1} aria-label={`نقل السؤال ${ar(i + 1)} إلى أسفل`}>
                         أسفل
                       </button>
                     </form>

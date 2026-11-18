@@ -6,7 +6,12 @@ export function Field({ id, label, hint, error, required, children }: { id: stri
     <div className="field">
       <label htmlFor={id}>
         {label}
-        {required ? <em className="req"> *</em> : null}
+        {required ? (
+          <em className="req" aria-hidden="true">
+            {' '}
+            *
+          </em>
+        ) : null}
       </label>
       {children}
       {hint && !error ? (
@@ -15,7 +20,7 @@ export function Field({ id, label, hint, error, required, children }: { id: stri
         </span>
       ) : null}
       {error ? (
-        <span className="err" id={`${id}-err`} role="alert">
+        <span className="err" id={`${id}-err`}>
           {error}
         </span>
       ) : null}
@@ -23,11 +28,12 @@ export function Field({ id, label, hint, error, required, children }: { id: stri
   );
 }
 
-/** Props that connect an input to the Field around it. */
-export const fieldProps = (id: string, error?: string, hint?: string) => ({
+/** Props that connect an input to the Field around it. Errors are announced once, by the summary above the form. */
+export const fieldProps = (id: string, { error, hint = false, required = false, ltr = false }: { error?: string; hint?: boolean; required?: boolean; ltr?: boolean } = {}) => ({
   id,
   name: id,
-  className: 'inp',
+  className: ltr ? 'inp ltr' : 'inp',
   'aria-invalid': error ? true : undefined,
+  'aria-required': required ? true : undefined,
   'aria-describedby': error ? `${id}-err` : hint ? `${id}-hint` : undefined,
 });

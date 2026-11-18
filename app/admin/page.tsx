@@ -76,22 +76,24 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
           {rows.length === 0 ? (
             <p className="empty">لا توجد طلبات في هذه القائمة.</p>
           ) : (
-            <table className="st">
-              <thead>
-                <tr>
-                  <th>الطالب</th>
-                  <th>الدورة</th>
-                  <th className="hm">وصل</th>
-                  <th>الحالة</th>
-                  <th>
+            <table className="st" role="table">
+              <thead role="rowgroup">
+                <tr role="row">
+                  <th role="columnheader">الطالب</th>
+                  <th role="columnheader">الدورة</th>
+                  <th role="columnheader" className="hm">
+                    تاريخ الطلب
+                  </th>
+                  <th role="columnheader">الحالة</th>
+                  <th role="columnheader">
                     <span className="vh">إجراء</span>
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody role="rowgroup">
                 {rows.map((r) => (
-                  <tr key={r.id} className={r.id === open?.id ? 'sel' : undefined}>
-                    <td>
+                  <tr role="row" key={r.id} className={r.id === open?.id ? 'sel' : undefined}>
+                    <td role="cell">
                       <div className="who">
                         <span className="av" aria-hidden="true">
                           {r.studentName[0]}
@@ -105,12 +107,14 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                         </span>
                       </div>
                     </td>
-                    <td>{r.course}</td>
-                    <td className="hm mute">{formatDate(r.createdAt)}</td>
-                    <td>
+                    <td role="cell">{r.course}</td>
+                    <td role="cell" className="hm mute">
+                      {formatDate(r.createdAt)}
+                    </td>
+                    <td role="cell">
                       <StatusTag status={r.status} />
                     </td>
-                    <td>
+                    <td role="cell">
                       <div className="tacts">
                         <Link className="btn w sm" href={`/admin?status=${status}&id=${r.id}#request`} aria-label={`عرض طلب ${r.studentName}`}>
                           عرض
@@ -159,20 +163,25 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                   {open.course} · {open.teacher}
                 </dd>
               </div>
-              {open.answers.map((a) => (
-                <div key={a.label}>
+              {open.answers.map((a, i) => (
+                <div key={i}>
                   <dt>{a.label}</dt>
                   <dd>{a.answer}</dd>
                 </div>
               ))}
               <div>
-                <dt>وصل الطلب</dt>
+                <dt>تاريخ الطلب</dt>
                 <dd>
                   {formatDate(open.createdAt)}
                   {open.reviewedAt ? ` · رُوجع في ${formatDate(open.reviewedAt)}` : ''}
                 </dd>
               </div>
             </dl>
+            {params.done === '1' ? (
+              <p className="alert ok" role="status" style={{ margin: '12px 22px 0' }}>
+                حُفظ القرار، وسيراه الطالب في حسابه.
+              </p>
+            ) : null}
             <form className="ft" action={reviewAction}>
               <input type="hidden" name="id" value={open.id} />
               <input type="hidden" name="from" value={status} />
@@ -181,12 +190,12 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
               </label>
               <textarea className="inp" id="note" name="note" maxLength={500} defaultValue={open.adminNote ?? ''} />
               <div className="two">
-                <button className="btn ok" type="submit" name="decision" value="accepted" disabled={open.status === 'accepted'}>
+                <button className="btn ok" type="submit" name="decision" value="accepted" >
                   <Icon name="check" size="s" />
-                  قبول الطلب
+                  {open.status === 'accepted' ? 'حفظ الملاحظة' : 'قبول الطلب'}
                 </button>
-                <button className="btn no" type="submit" name="decision" value="rejected" disabled={open.status === 'rejected'}>
-                  رفض الطلب
+                <button className="btn no" type="submit" name="decision" value="rejected" >
+                  {open.status === 'rejected' ? 'حفظ الملاحظة' : 'رفض الطلب'}
                 </button>
               </div>
             </form>

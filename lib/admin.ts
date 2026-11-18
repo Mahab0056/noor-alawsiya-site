@@ -71,8 +71,8 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
 export async function reviewRequest(db: Db, adminId: number, id: number, decision: 'accepted' | 'rejected', note: string) {
   const adminNote = note.trim().slice(0, MAX_TEXT) || null;
   return db.tx(async (t) => {
-    const rows = await t.query<{ status: RegistrationStatus }>(
-      'update registrations set status = $2, admin_note = $3, reviewed_by = $4, reviewed_at = now() where id = $1 returning status',
+    const rows = await t.query<{ id: string }>(
+      'update registrations set status = $2, admin_note = $3, reviewed_by = $4, reviewed_at = now() where id = $1 returning id',
       [id, decision, adminNote, adminId]
     );
     if (rows.length === 0) return false;
@@ -120,20 +120,15 @@ export async function setQuestionActive(db: Db, adminId: number, id: number, act
   });
 }
 
-/** Swaps a question with its neighbour above or below. */
+/** Moves a question one place up or down, then renumbers every position so ties cannot build up. */
 export async function moveQuestion(db: Db, adminId: number, id: number, direction: 'up' | 'down') {
   await db.tx(async (t) => {
-    const [me] = await t.query<{ id: string; position: number }>('select id, position from form_questions where id = $1', [id]);
-    if (!me) return;
-    const [other] = await t.query<{ id: string; position: number }>(
-      direction === 'up'
-        ? 'select id, position from form_questions where position < $1 order by position desc limit 1'
-        : 'select id, position from form_questions where position > $1 order by position asc limit 1',
-      [me.position]
-    );
-    if (!other) return;
-    await t.query('update form_questions set position = $2 where id = $1', [me.id, other.position]);
-    await t.query('update form_questions set position = $2 where id = $1', [other.id, me.position]);
+    const order = (await t.query<{ id: string }>('select id from form_questions order by position, id')).map((r) => Number(r.id));
+    const from = order.indexOf(id);
+    const to = from + (direction === 'up' ? -1 : 1);
+    if (from < 0 || to < 0 || to >= order.length) return;
+    [order[from], order[to]] = [order[to], order[from]];
+    for (const [i, questionId] of order.entries()) await t.query('update form_questions set position = $2 where id = $1', [questionId, i + 1]);
     await audit(t, adminId, 'question.move', `question:${id}`, { direction });
   });
 }

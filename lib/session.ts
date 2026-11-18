@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { getAdmin, getStudent, type AdminProfile, type StudentProfile } from './accounts';
 import { createSession, destroySession, readSession, type SessionKind } from './auth';
+import { SESSION_COOKIE } from './cookie-names';
 import { getDb } from './db';
 
 /**
@@ -12,7 +13,7 @@ import { getDb } from './db';
  * requireStudent() or requireAdmin() itself; nothing relies on a layout or on the proxy.
  */
 
-const COOKIE: Record<SessionKind, string> = { student: 'noor_s', admin: 'noor_a' };
+const COOKIE: Record<SessionKind, string> = SESSION_COOKIE;
 
 export async function startSession(kind: SessionKind, userId: number) {
   const db = await getDb();
@@ -60,8 +61,11 @@ export async function requireAdmin() {
   return (await currentAdmin()) ?? redirect('/admin/login');
 }
 
-/** Client address for login throttling. Railway and most proxies put the client first in x-forwarded-for. */
+/**
+ * Client address for throttling. Railway's edge sets X-Real-IP itself, so a client cannot choose it.
+ * X-Forwarded-For can carry values the client sent; only its last hop (added by the nearest proxy) is used, as a fallback.
+ */
 export async function clientIp() {
   const h = await headers();
-  return h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown';
+  return h.get('x-real-ip')?.trim() || h.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown';
 }

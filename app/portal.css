@@ -27,9 +27,6 @@
 .reg-main h2 { font-size: 28px; }
 .reg-main .sub { color: var(--mute); margin: 4px 0 26px; }
 .q { padding: 22px 24px; margin-bottom: 14px; }
-.q h4 { font-size: 16px; margin-bottom: 4px; display: flex; gap: 8px; }
-.q h4 .qn { color: var(--mute); font-weight: 500; }
-.q h4 em { font-style: normal; color: var(--bad); }
 .q .h { font-size: 13px; color: var(--mute); margin-bottom: 12px; }
 .opts { display: grid; gap: 8px; }
 .opts.c2 { grid-template-columns: 1fr 1fr; }
@@ -37,7 +34,6 @@
 .opt { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; font-size: 15px; background: #fff; }
 .inp { border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; background: #fff; min-height: 48px; font-size: 15px; }
 .reg-acts { display: flex; align-items: center; gap: 12px; margin-top: 22px; }
-.reg-acts .sp { margin-inline-start: auto; font-size: 13px; color: var(--mute); display: flex; align-items: center; gap: 6px; }
 
 /* ---------- التطبيق: بوابة الطالب ولوحة الأدمن ---------- */
 .app { display: grid; grid-template-columns: 264px 1fr; min-height: 100vh; }
@@ -48,7 +44,6 @@
 .side a.on { background: var(--y); color: var(--k); font-weight: 700; }
 .side a b { margin-inline-start: auto; background: var(--y); color: var(--k); font-size: 12px; border-radius: 999px; padding: 0 8px; line-height: 20px; }
 .side a.on b { background: var(--k); color: var(--y); }
-.side .cap { font-size: 11.5px; color: #7f7f7f; padding: 16px 12px 5px; font-weight: 600; }
 .side .me { margin-top: auto; display: flex; gap: 10px; align-items: center; padding: 14px 8px 0; border-top: 1px solid #262628; font-size: 13.5px; line-height: 1.4; }
 .side .me span { color: #8f8f8f; font-size: 12.5px; }
 .main { min-width: 0; }
@@ -71,7 +66,6 @@
 .row { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; align-items: start; margin-bottom: 18px; }
 .ch { display: flex; align-items: center; gap: 10px; padding: 18px 22px 0; }
 .ch h2 { font-size: 17px; }
-.ch .sp { margin-inline-start: auto; display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .tabs { display: flex; gap: 4px; padding: 14px 22px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .tabs a { padding: 8px 12px 12px; color: var(--mute); display: flex; gap: 7px; align-items: center; }
 .tabs a.on { color: var(--ink); font-weight: 700; box-shadow: inset 0 -3px 0 var(--k); }
@@ -133,7 +127,7 @@ tr.sel td { background: var(--y-soft); }
   .kpi b { font-size: 25px; }
   .row { grid-template-columns: 1fr; }
   .hm { display: none; }
-  table.st thead { display: none; }
+  table.st thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   table.st tr { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "a s" "c x"; gap: 8px 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); align-items: center; }
   table.st td { border: 0; padding: 0 !important; background: none !important; }
   table.st td:nth-child(1) { grid-area: a; }
@@ -141,6 +135,6 @@ tr.sel td { background: var(--y-soft); }
   table.st td:nth-child(4) { grid-area: s; justify-self: end; }
   table.st td:nth-child(5) { grid-area: x; }
   table.st tr.sel { background: var(--y-soft); }
-  .tabs { overflow: hidden; padding-inline: 14px; }
+  .tabs { overflow-x: auto; padding-inline: 14px; }
   .tabs a { padding-inline: 8px; white-space: nowrap; }
 }

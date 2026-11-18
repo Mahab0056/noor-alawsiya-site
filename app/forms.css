@@ -1,11 +1,10 @@
 /* النماذج الحقيقية: حقول الإدخال، الخيارات، الأخطاء، وبقية أشكال الأزرار والوسوم التي تحتاجها شاشات الحساب والإدارة. */
 .btn.w { background: #fff; border-color: var(--line); color: var(--ink); }
 .btn.no { color: var(--bad); border-color: #e6b3ae; background: #fff; }
-.btn[disabled] { opacity: 0.6; cursor: progress; }
+.btn[disabled] { opacity: 0.6; cursor: default; }
 button.btn { cursor: pointer; }
 .tag.warn { background: var(--warn-bg); color: var(--warn); }
 .tag.bad { background: var(--bad-bg); color: var(--bad); }
-.tag.info { background: var(--info-bg); color: var(--info); }
 .bar-p { max-width: 220px; height: 8px; border-radius: 999px; background: #ebe8d8; overflow: hidden; flex: 1; }
 .bar-p i { display: block; height: 100%; background: var(--k); border-radius: 999px; }
 
@@ -16,7 +15,7 @@ button.btn { cursor: pointer; }
 input.inp, select.inp, textarea.inp { width: 100%; font: 16px var(--ui); color: var(--ink); appearance: none; }
 textarea.inp { min-height: 96px; resize: vertical; }
 select.inp { background-image: linear-gradient(45deg, transparent 50%, var(--ink) 50%), linear-gradient(135deg, var(--ink) 50%, transparent 50%); background-position: 18px 22px, 23px 22px; background-size: 5px 5px; background-repeat: no-repeat; padding-inline-end: 38px; }
-.inp:focus { outline: none; border-color: var(--k); box-shadow: 0 0 0 4px var(--y-soft); }
+.inp:focus { outline: 2px solid transparent; border-color: var(--k); box-shadow: 0 0 0 4px var(--y-soft); }
 .inp[aria-invalid="true"] { border-color: var(--bad); }
 .inp.ltr { direction: ltr; text-align: right; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -24,10 +23,14 @@ select.inp { background-image: linear-gradient(45deg, transparent 50%, var(--ink
 /* خيارات الاستبيان بعناصر إدخال حقيقية */
 label.opt { cursor: pointer; }
 .opt input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--k); }
+.opt a { text-decoration: underline; text-underline-offset: 3px; }
 .opt:has(input:checked) { border-color: var(--k); background: var(--y-soft); font-weight: 600; }
 .opt:has(input:focus-visible) { box-shadow: 0 0 0 4px var(--y-soft); border-color: var(--k); }
 fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
 legend { padding: 0; }
+/* A legend normally sits on the fieldset border. Floating it puts the question title inside the card. */
+fieldset.q > legend { float: inline-start; width: 100%; }
+fieldset.q > legend + * { clear: both; }
 
 /* الأخطاء والتنبيهات */
 .err { color: var(--bad); font-size: 13.5px; font-weight: 600; }
@@ -55,18 +58,15 @@ legend { padding: 0; }
 .status { display: grid; gap: 14px; }
 .status .card { padding: 20px 22px; display: grid; gap: 8px; }
 .status h2 { font-size: 19px; }
-.side form, .me form { display: contents; }
 .linkbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .reg-main form { display: block; }
 .reg-main [hidden] { display: none; }
 .empty { padding: 34px 22px; text-align: center; color: var(--mute); }
-.drawer .ft form { display: grid; gap: 10px; }
 .qrow { display: flex; gap: 10px; align-items: center; padding: 12px 22px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
 .qrow:last-child { border-bottom: 0; }
-.qrow .sp { margin-inline-start: auto; display: flex; gap: 6px; align-items: center; }
-.qrow.off { opacity: 0.55; }
+.qrow .sp { margin-inline-start: auto; display: flex; gap: 6px; align-items: center; flex: none; }
+.qrow.off b { color: var(--mute); font-weight: 500; }
 .qrow form { display: flex; gap: 6px; }
-.qrow .sp { flex: none; }
 .qrow > div:not(.sp) { min-width: 0; }
 
 .req, .qh em { font-style: normal; color: var(--bad); }

@@ -1,8 +1,10 @@
 import 'server-only';
-import { dummyHash, hashPassword, isThrottled, MIN_PASSWORD, newTotpSecret, normalizeEmail, normalizePhone, recordAttempt, seal, unseal, verifyPassword, verifyTotp } from './auth';
+import { dummyHash, hashPassword, isThrottled, MIN_PASSWORD, newTotpSecret, normalizeEmail, normalizePhone, recordAttempt, seal, unseal, matchTotpStep, verifyPassword } from './auth';
 import type { Db } from './db';
 
 /** Logging in: students by phone and password, admins by email, password and a TOTP code. */
+
+import { MAX_ACCOUNTS_PER_PHONE } from './form-rules';
 
 export type LoginFailure = 'invalid' | 'throttled';
 
@@ -14,10 +16,10 @@ export type StudentLogin = { ok: true; studentId: number } | { ok: false; reason
  */
 export async function loginStudent(db: Db, phoneInput: string, password: string, ip: string, fullName?: string): Promise<StudentLogin> {
   const phone = normalizePhone(phoneInput);
-  const identifier = phone ?? phoneInput.trim().slice(0, 40);
+  const identifier = phone ?? 'invalid-phone'; // never store what was typed: it may be a password in the wrong box
   if (await isThrottled(db, 'student', identifier, ip)) return { ok: false, reason: 'throttled' };
 
-  const accounts = phone ? await db.query<{ id: string; full_name: string; password_hash: string }>('select id, full_name, password_hash from students where phone = $1 order by id', [phone]) : [];
+  const accounts = phone ? await db.query<{ id: string; full_name: string; password_hash: string }>('select id, full_name, password_hash from students where phone = $1 order by id limit $2', [phone, MAX_ACCOUNTS_PER_PHONE]) : [];
   const matches: { id: number; name: string }[] = [];
   if (accounts.length === 0) await verifyPassword(await dummyHash(), password); // same cost as a real check
   for (const a of accounts) {
@@ -41,12 +43,17 @@ export async function loginAdmin(db: Db, emailInput: string, password: string, c
   const email = normalizeEmail(emailInput).slice(0, 200);
   if (await isThrottled(db, 'admin', email, ip)) return { ok: false, reason: 'throttled' };
 
-  const [admin] = await db.query<{ id: string; password_hash: string; totp_secret: string | null }>('select id, password_hash, totp_secret from admins where lower(email) = $1', [email]);
+  const [admin] = await db.query<{ id: string; password_hash: string; totp_secret: string | null; totp_last_step: string | null }>(
+    'select id, password_hash, totp_secret, totp_last_step from admins where lower(email) = $1',
+    [email]
+  );
   const passwordOk = await verifyPassword(admin?.password_hash ?? (await dummyHash()), password);
-  const codeOk = Boolean(admin?.totp_secret) && verifyTotp(unseal(admin!.totp_secret!), code);
+  const step = admin?.totp_secret ? matchTotpStep(unseal(admin.totp_secret), code) : null;
+  // A code is good once: a step at or before the last accepted one is refused, so an observed code cannot be replayed.
+  const codeOk = step !== null && step > Number(admin?.totp_last_step ?? 0);
   if (admin && passwordOk && codeOk) {
     await recordAttempt(db, 'admin', email, ip, true);
-    await db.query('update admins set last_login_at = now() where id = $1', [admin.id]);
+    await db.query('update admins set last_login_at = now(), totp_last_step = $2 where id = $1', [admin.id, step]);
     return { ok: true, adminId: Number(admin.id) };
   }
   await recordAttempt(db, 'admin', email, ip, false);

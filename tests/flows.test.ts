@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createAdmin, loginAdmin, loginStudent } from '@/lib/accounts';
 import { addQuestion, countRequests, getRequest, listRequests, moveQuestion, reviewRequest, setQuestionActive, validateQuestion } from '@/lib/admin';
-import { createSession, destroySession, normalizePhone, readSession, seal, totpAt, unseal, verifyTotp } from '@/lib/auth';
+import { allowRegistration, createSession, destroySession, normalizePhone, readSession, seal, totpAt, unseal, verifyTotp } from '@/lib/auth';
+import { isMinorIn, visibleQuestions } from '@/lib/form-rules';
 import { resetDbForTests, type Db } from '@/lib/db';
-import { listQuestions, listStudentRegistrations, NO, register, YES, type RegistrationInput } from '@/lib/registration';
+import { listQuestions, listStudentRegistrations, NO, register, validateStudent, YES, type RegistrationInput } from '@/lib/registration';
 
 let db: Db;
 let courseId: number;
@@ -189,4 +190,71 @@ test('questionnaire builder: validate, reorder and disable', async () => {
   await setQuestionActive(db, adminId, q.days, false);
   assert.ok(!(await order()).includes(q.days));
   assert.ok((await listQuestions(db, { includeInactive: true })).some((x) => x.id === q.days));
+});
+
+// ---------------------------------------------------------------- added after the independent reviews
+
+test('a successful login does not reset the failure counter for that phone', async () => {
+  await db.query('delete from login_attempts');
+  for (const name of ['ضحية تجريبية', 'مهاجم تجريبي']) {
+    const r = await register(db, input({ fullName: name, phone: '07755555555', password: name === 'ضحية تجريبية' ? 'victim-password' : 'attacker-password' }));
+    assert.ok(r.ok);
+  }
+  for (let i = 0; i < 4; i++) assert.deepEqual(await loginStudent(db, '07755555555', `guess-${i}`, '10.0.0.9'), { ok: false, reason: 'invalid' });
+  assert.ok((await loginStudent(db, '07755555555', 'attacker-password', '10.0.0.9')).ok);
+  assert.deepEqual(await loginStudent(db, '07755555555', 'guess-4', '10.0.0.9'), { ok: false, reason: 'invalid' });
+  assert.deepEqual(await loginStudent(db, '07755555555', 'victim-password', '10.0.0.9'), { ok: false, reason: 'throttled' });
+  await db.query('delete from login_attempts');
+});
+
+test('a TOTP code works once, and odd input is refused without an error', async () => {
+  await db.query('update admins set totp_last_step = null');
+  const code = totpAt(totpSecret, Date.now());
+  assert.ok((await loginAdmin(db, 'admin@example.test', 'a-long-test-password', code, IP)).ok);
+  assert.deepEqual(await loginAdmin(db, 'admin@example.test', 'a-long-test-password', code, IP), { ok: false, reason: 'invalid' });
+  for (const odd of ['١٢٣٤٥٦', 'abcdef', '', '12345', '1234567']) assert.equal(verifyTotp(totpSecret, odd), false);
+  const arabic = totpAt(totpSecret, Date.now()).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+  assert.ok(verifyTotp(totpSecret, arabic), 'Arabic-Indic digits are accepted');
+  await db.query('delete from login_attempts');
+});
+
+test('registration is limited per address, separately from logins', async () => {
+  for (let i = 0; i < 8; i++) assert.ok(await allowRegistration(db, '10.0.0.7'));
+  assert.equal(await allowRegistration(db, '10.0.0.7'), false);
+  assert.ok(await allowRegistration(db, '10.0.0.8'));
+  assert.ok((await loginStudent(db, '07755555555', 'victim-password', '10.0.0.7')).ok, 'logins from that address still work');
+});
+
+test('phone and birth-year rules are the same for Arabic-Indic digits and at the age boundary', () => {
+  assert.equal(normalizePhone('٠٧٧٠١٢٣٤٥٦٧'), '07701234567');
+  assert.equal(normalizePhone('+964 770 123 4567'), '07701234567');
+  assert.equal(isMinorIn(2008, 2026), true);
+  assert.equal(isMinorIn(2007, 2026), false);
+  const at = new Date(2026, 5, 1);
+  assert.equal(validateStudent(input({ birthYear: '٢٠٠٨', guardianName: '', guardianPhone: '' }), at).errors.guardianName, 'اكتب اسم ولي الأمر.');
+  assert.equal(validateStudent(input({ birthYear: '2007' }), at).errors.guardianName, undefined);
+  assert.equal(validateStudent(input({ birthYear: '1900' }), at).errors.birthYear, 'سنة الميلاد غير صحيحة.');
+  assert.equal(validateStudent(input({ birthYear: '2024' }), at).errors.birthYear, 'سنة الميلاد غير صحيحة.');
+});
+
+test('a question that depends on a hidden question stays hidden', async () => {
+  const all = await listQuestions(db);
+  const parent = all.find((x) => x.id === q.before)!;
+  const child = all.find((x) => x.id === q.which)!;
+  const grandchild = { ...child, id: 9001, showIf: { question_id: child.id, equals: 'نص' } };
+  const shown = visibleQuestions([parent, child, grandchild], { [parent.id]: NO, [child.id]: 'نص' });
+  assert.deepEqual(shown.map((x) => x.id), [parent.id]);
+});
+
+test('moving a question works when positions are tied, and does nothing at the ends', async () => {
+  await db.query('update form_questions set position = 1');
+  const before = (await listQuestions(db, { includeInactive: true })).map((x) => x.id);
+  await moveQuestion(db, adminId, before[0], 'down');
+  const after1 = (await listQuestions(db, { includeInactive: true })).map((x) => x.id);
+  assert.deepEqual(after1.slice(0, 2), [before[1], before[0]]);
+  await moveQuestion(db, adminId, after1[0], 'up');
+  await moveQuestion(db, adminId, after1.at(-1)!, 'down');
+  assert.deepEqual((await listQuestions(db, { includeInactive: true })).map((x) => x.id), after1);
+  const positions = (await db.query<{ position: number }>('select position from form_questions order by position')).map((r) => r.position);
+  assert.deepEqual(positions, positions.map((_, i) => i + 1));
 });
