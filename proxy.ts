@@ -8,7 +8,8 @@ import { SESSION_COOKIE } from '@/lib/cookie-names';
  */
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname === '/admin/login') return NextResponse.next();
+  // The login page, and invite links (opened by someone who has no account yet; the token is checked on the page).
+  if (pathname === '/admin/login' || pathname.startsWith('/admin/invite/')) return NextResponse.next();
   const admin = pathname.startsWith('/admin');
   if (!request.cookies.has(SESSION_COOKIE[admin ? 'admin' : 'student'])) {
     return NextResponse.redirect(new URL(admin ? '/admin/login' : '/login', request.url));

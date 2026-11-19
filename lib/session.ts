@@ -61,6 +61,12 @@ export async function requireAdmin() {
   return (await currentAdmin()) ?? redirect('/admin/login');
 }
 
+/** For every super-admin page and Server Action. lib/invites.ts checks the role again against the database. */
+export async function requireSuperAdmin() {
+  const admin = await requireAdmin();
+  return admin.role === 'super_admin' ? admin : redirect('/admin');
+}
+
 /**
  * Client address for throttling. Railway's edge sets X-Real-IP itself, so a client cannot choose it.
  * X-Forwarded-For can carry values the client sent; only its last hop (added by the nearest proxy) is used, as a fallback.

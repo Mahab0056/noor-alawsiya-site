@@ -1,6 +1,7 @@
 import 'server-only';
 import { dummyHash, hashPassword, isThrottled, MIN_PASSWORD, newTotpSecret, normalizeEmail, normalizePhone, recordAttempt, seal, unseal, matchTotpStep, verifyPassword } from './auth';
 import type { Db } from './db';
+import type { AdminRole } from './invites';
 
 /** Logging in: students by phone and password, admins by email, password and a TOTP code. */
 
@@ -44,7 +45,8 @@ export async function loginAdmin(db: Db, emailInput: string, password: string, c
   if (await isThrottled(db, 'admin', email, ip)) return { ok: false, reason: 'throttled' };
 
   const [admin] = await db.query<{ id: string; password_hash: string; totp_secret: string | null; totp_last_step: string | null }>(
-    'select id, password_hash, totp_secret, totp_last_step from admins where lower(email) = $1',
+    // Only active admins: a pending admin (invited, authenticator not confirmed yet) or a disabled one cannot sign in.
+    'select id, password_hash, totp_secret, totp_last_step from admins where lower(email) = $1 and totp_confirmed_at is not null and disabled_at is null',
     [email]
   );
   const passwordOk = await verifyPassword(admin?.password_hash ?? (await dummyHash()), password);
@@ -61,12 +63,12 @@ export async function loginAdmin(db: Db, emailInput: string, password: string, c
 }
 
 /** Creates an admin with two-step verification on from the start. Returns the TOTP secret to show once. */
-export async function createAdmin(db: Db, input: { name: string; email: string; password: string; role?: 'owner' | 'staff' }) {
+export async function createAdmin(db: Db, input: { name: string; email: string; password: string; role?: AdminRole }) {
   const email = normalizeEmail(input.email);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Invalid email.');
   if (input.password.length < Math.max(MIN_PASSWORD, 12)) throw new Error('Admin passwords need at least 12 characters.');
   const secret = newTotpSecret();
-  const [row] = await db.query<{ id: string }>('insert into admins (name, email, password_hash, totp_secret, role) values ($1, $2, $3, $4, $5) returning id', [
+  const [row] = await db.query<{ id: string }>('insert into admins (name, email, password_hash, totp_secret, role, totp_confirmed_at) values ($1, $2, $3, $4, $5, now()) returning id', [
     input.name.trim(),
     email,
     await hashPassword(input.password),
@@ -82,8 +84,9 @@ export async function getStudent(db: Db, id: number): Promise<StudentProfile | n
   return r ? { id: Number(r.id), fullName: r.full_name, phone: r.phone } : null;
 }
 
-export type AdminProfile = { id: number; name: string; role: 'owner' | 'staff' };
+export type AdminProfile = { id: number; name: string; role: AdminRole };
+/** Only an active admin has a profile: a session of an admin who was disabled since, or reset to pending, is worth nothing. */
 export async function getAdmin(db: Db, id: number): Promise<AdminProfile | null> {
-  const [r] = await db.query<{ id: string; name: string; role: 'owner' | 'staff' }>('select id, name, role from admins where id = $1', [id]);
+  const [r] = await db.query<{ id: string; name: string; role: AdminRole }>('select id, name, role from admins where id = $1 and totp_confirmed_at is not null and disabled_at is null', [id]);
   return r ? { id: Number(r.id), name: r.name, role: r.role } : null;
 }
