@@ -10,6 +10,10 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // The login page, and invite links (opened by someone who has no account yet; the token is checked on the page).
   if (pathname === '/admin/login' || pathname.startsWith('/admin/invite/')) return NextResponse.next();
+  // A Server Action call (a form sent from a page that was open when the session ended) is not redirected here: the
+  // browser would follow a 307 with the same POST and show «This page couldn't load». Every action checks the session
+  // itself and answers with a redirect to the login page that the page can follow.
+  if (request.method === 'POST' && request.headers.has('next-action')) return NextResponse.next();
   const admin = pathname.startsWith('/admin');
   if (!request.cookies.has(SESSION_COOKIE[admin ? 'admin' : 'student'])) {
     return NextResponse.redirect(new URL(admin ? '/admin/login' : '/login', request.url));

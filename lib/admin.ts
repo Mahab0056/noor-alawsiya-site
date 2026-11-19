@@ -15,16 +15,17 @@ export async function audit(db: Db, adminId: number | null, action: string, targ
 
 // ---------------------------------------------------------------- registration requests
 
-export type RequestRow = { id: number; studentName: string; birthYear: number; hasGuardian: boolean; course: string; status: RegistrationStatus; createdAt: Date };
+/** existingStudent: asked for from «حسابي» by a student who already had an account (0007), not with the registration form. */
+export type RequestRow = { id: number; studentName: string; birthYear: number; hasGuardian: boolean; course: string; status: RegistrationStatus; createdAt: Date; existingStudent: boolean };
 
 export async function listRequests(db: Db, status: RegistrationStatus): Promise<RequestRow[]> {
-  const rows = await db.query<{ id: string; full_name: string; birth_year: number; has_guardian: boolean; course: string; status: RegistrationStatus; created_at: Date }>(
-    `select r.id, s.full_name, s.birth_year, (s.guardian_consent_at is not null) as has_guardian, c.name as course, r.status, r.created_at
+  const rows = await db.query<{ id: string; full_name: string; birth_year: number; has_guardian: boolean; course: string; status: RegistrationStatus; created_at: Date; origin: string }>(
+    `select r.id, s.full_name, s.birth_year, (s.guardian_consent_at is not null) as has_guardian, c.name as course, r.status, r.created_at, r.origin
      from registrations r join students s on s.id = r.student_id join courses c on c.id = r.course_id
      where r.status = $1 order by r.created_at desc limit 200`,
     [status]
   );
-  return rows.map((r) => ({ id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at) }));
+  return rows.map((r) => ({ id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at), existingStudent: r.origin === 'account' }));
 }
 
 export async function countRequests(db: Db): Promise<Record<RegistrationStatus, number>> {
@@ -41,6 +42,10 @@ export type RequestDetail = RequestRow & {
   teacher: string;
   adminNote: string | null;
   reviewedAt: Date | null;
+  /** The student's own note, for a request made from «حسابي». */
+  studentNote: string | null;
+  /** For a minor's request made from «حسابي»: when the guardian's agreement to this request was ticked. */
+  requestConsentAt: Date | null;
   answers: { label: string; answer: string }[];
 };
 
@@ -48,9 +53,11 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
   const [r] = await db.query<{
     id: string; full_name: string; birth_year: number; phone: string; guardian_name: string | null; guardian_phone: string | null; has_guardian: boolean;
     course: string; teacher: string; status: RegistrationStatus; admin_note: string | null; created_at: Date; reviewed_at: Date | null;
+    origin: string; student_note: string | null; request_consent_at: Date | null;
   }>(
     `select r.id, s.full_name, s.birth_year, s.phone, s.guardian_name, s.guardian_phone, (s.guardian_consent_at is not null) as has_guardian,
-            c.name as course, c.teacher, r.status, r.admin_note, r.created_at, r.reviewed_at
+            c.name as course, c.teacher, r.status, r.admin_note, r.created_at, r.reviewed_at,
+            r.origin, r.student_note, r.guardian_consent_at as request_consent_at
      from registrations r join students s on s.id = r.student_id join courses c on c.id = r.course_id
      where r.id = $1`,
     [id]
@@ -64,22 +71,34 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
     id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at),
     phone: r.phone, guardianName: r.guardian_name, guardianPhone: r.guardian_phone, teacher: r.teacher, adminNote: r.admin_note,
     reviewedAt: r.reviewed_at ? new Date(r.reviewed_at) : null,
+    existingStudent: r.origin === 'account', studentNote: r.student_note, requestConsentAt: r.request_consent_at ? new Date(r.request_consent_at) : null,
     answers: answers.map((a) => ({ label: a.label, answer: Array.isArray(a.answer) ? a.answer.join('، ') : String(a.answer) })),
   };
 }
 
-/** Accept or reject. A request can be re-decided; rejecting an accepted one revokes access to lessons. */
-export async function reviewRequest(db: Db, adminId: number, id: number, decision: 'accepted' | 'rejected', note: string) {
+export type ReviewResult = 'saved' | 'missing' | 'conflict';
+
+/**
+ * Accept or reject. A request can be re-decided; rejecting an accepted one revokes access to lessons.
+ * 'conflict': accepting an old rejected request while the same student has another pending or accepted request for the
+ * same course (allowed since 0007, which lets a rejected course be asked for again). Decide the newer request instead.
+ */
+export async function reviewRequest(db: Db, adminId: number, id: number, decision: 'accepted' | 'rejected', note: string): Promise<ReviewResult> {
   const adminNote = note.trim().slice(0, MAX_TEXT) || null;
-  return db.tx(async (t) => {
-    const rows = await t.query<{ id: string }>(
-      'update registrations set status = $2, admin_note = $3, reviewed_by = $4, reviewed_at = now() where id = $1 returning id',
-      [id, decision, adminNote, adminId]
-    );
-    if (rows.length === 0) return false;
-    await audit(t, adminId, `registration.${decision}`, `registration:${id}`);
-    return true;
-  });
+  try {
+    return await db.tx(async (t) => {
+      const rows = await t.query<{ id: string }>(
+        'update registrations set status = $2, admin_note = $3, reviewed_by = $4, reviewed_at = now() where id = $1 returning id',
+        [id, decision, adminNote, adminId]
+      );
+      if (rows.length === 0) return 'missing';
+      await audit(t, adminId, `registration.${decision}`, `registration:${id}`);
+      return 'saved';
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === '23505') return 'conflict'; // registrations_one_live_idx
+    throw e;
+  }
 }
 
 // ---------------------------------------------------------------- questionnaire builder

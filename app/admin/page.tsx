@@ -32,6 +32,11 @@ function StatusTag({ status }: { status: RegistrationStatus }) {
   );
 }
 
+/** A request made from «حسابي» by a student who already has an account: same student row, no new personal data. */
+function ExistingTag() {
+  return <span className="tag known">طالب مسجّل</span>;
+}
+
 async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParams'>) {
   const admin = await requireAdmin();
   const params = await searchParams;
@@ -104,6 +109,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                             مواليد {ar(r.birthYear)}
                             {r.hasGuardian ? ' · ولي الأمر موافق' : ''}
                           </small>
+                          {r.existingStudent ? <ExistingTag /> : null}
                         </span>
                       </div>
                     </td>
@@ -139,6 +145,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                 <small>
                   طلب رقم <span className="num">#{String(open.id).padStart(4, '0')}</span> · {open.course}
                 </small>
+                {open.existingStudent ? <ExistingTag /> : null}
               </div>
               <StatusTag status={open.status} />
             </div>
@@ -155,6 +162,18 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                   <dd>
                     {open.guardianName} · <span className="num">{open.guardianPhone}</span>
                   </dd>
+                </div>
+              ) : null}
+              {open.requestConsentAt ? (
+                <div>
+                  <dt>موافقة ولي الأمر على هذا الطلب</dt>
+                  <dd>نعم، في {formatDate(open.requestConsentAt)}</dd>
+                </div>
+              ) : null}
+              {open.studentNote ? (
+                <div>
+                  <dt>ملاحظة الطالب</dt>
+                  <dd className="pre">{open.studentNote}</dd>
                 </div>
               ) : null}
               <div>
@@ -177,6 +196,11 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                 </dd>
               </div>
             </dl>
+            {params.conflict === '1' ? (
+              <p className="alert bad" role="alert" style={{ margin: '12px 22px 0' }}>
+                لم يُحفظ القبول: لهذا الطالب طلب آخر قيد المراجعة أو مقبول للدورة نفسها. راجع الطلب الأحدث بدلاً منه.
+              </p>
+            ) : null}
             {params.done === '1' ? (
               <p className="alert ok" role="status" style={{ margin: '12px 22px 0' }}>
                 حُفظ القرار، وسيراه الطالب في حسابه.

@@ -78,7 +78,8 @@ export async function reviewAction(form: FormData) {
   const decision = text(form, 'decision');
   const from = STATUSES.find((s) => s === text(form, 'from')) ?? 'pending';
   if (requestId && (decision === 'accepted' || decision === 'rejected')) {
-    await reviewRequest(await getDb(), admin.id, requestId, decision, text(form, 'note'));
+    const result = await reviewRequest(await getDb(), admin.id, requestId, decision, text(form, 'note'));
+    if (result === 'conflict') redirect(`/admin?status=${from}&id=${requestId}&conflict=1#request`);
     redirect(`/admin?status=${decision}&id=${requestId}&done=1#request`); // show the request in its new list, still open
   }
   redirect(`/admin?status=${from}`);
