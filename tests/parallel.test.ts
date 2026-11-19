@@ -59,3 +59,12 @@ test('parallel registrations from one address: at most 8 pass the limit', async 
   const rs = await Promise.all(Array.from({ length: 30 }, () => allowRegistration(db, '10.5.0.1')));
   assert.equal(rs.filter(Boolean).length, 8);
 });
+
+test('wrong admin logins from other addresses do not lock the admin out', async () => {
+  await db.query('delete from login_attempts');
+  for (let i = 0; i < 10; i++) await loginAdmin(db, 'race@example.test', 'nope', '000000', `10.6.0.${i}`);
+  await db.query('update admins set totp_last_step = null');
+  assert.ok((await loginAdmin(db, 'race@example.test', 'a-long-test-password', totpAt(totpSecret, Date.now()), '10.6.1.1')).ok);
+  for (let i = 0; i < 5; i++) await loginAdmin(db, 'race@example.test', 'nope', '000000', '10.6.2.1');
+  assert.deepEqual(await loginAdmin(db, 'race@example.test', 'nope', '000000', '10.6.2.1'), { ok: false, reason: 'throttled' }, 'one address still gets 5 tries');
+});

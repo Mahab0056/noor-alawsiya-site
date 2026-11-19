@@ -85,7 +85,9 @@ export async function reserveAttempt(db: Db, scope: SessionKind, identifier: str
     await t.query(`select pg_advisory_xact_lock(1, hashtext($1 || ':' || $2))`, [scope, identifier]);
     await t.query(`select pg_advisory_xact_lock(2, hashtext($1 || ':' || $2))`, [scope, ip]);
     const [row] = await t.query<{ by_id: string; by_ip: string }>(
-      `select count(*) filter (where identifier = $2) as by_id, count(*) filter (where ip = $3) as by_ip
+      // Admins: the per-identifier count only includes failures from this address. Guessing an admin password gets
+      // nowhere without the TOTP code, so a global per-email lock would only let a stranger lock the owner out.
+      `select count(*) filter (where identifier = $2${scope === 'admin' ? ' and ip = $3' : ''}) as by_id, count(*) filter (where ip = $3) as by_ip
        from login_attempts
        where scope = $1 and not succeeded and created_at > now() - interval '${WINDOW}' and (identifier = $2 or ip = $3)`,
       [scope, identifier, ip]
