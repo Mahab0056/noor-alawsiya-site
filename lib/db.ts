@@ -27,8 +27,11 @@ export interface Db {
 const MIGRATIONS_DIR = path.join(process.cwd(), 'db', 'migrations');
 
 async function openPg(url: string): Promise<Db> {
-  const { Pool } = await import('pg');
-  const pool = new Pool({ connectionString: url, max: 10 });
+  const mod = await import('pg');
+  const pg = mod.default ?? mod;
+  // bigint ids and count(*) arrive as text by default. Every id here is far below 2^53, so read them as numbers (PGlite does the same).
+  pg.types.setTypeParser(20, Number);
+  const pool = new pg.Pool({ connectionString: url, max: 10 });
   type Queryable = { query: (text: string, params?: unknown[]) => Promise<{ rows: unknown[] }> };
   const wrap = (q: Queryable, inTx: boolean): Db => ({
     query: async <T extends Row>(text: string, params?: unknown[]) => (await q.query(text, params)).rows as T[],
@@ -50,7 +53,17 @@ async function openPg(url: string): Promise<Db> {
     },
     close: () => pool.end(),
   });
-  return wrap(pool, false);
+  const db = wrap(pool, false);
+  // Several instances can start together: one holds the lock and migrates, the others wait and find nothing left to do.
+  const lock = await pool.connect();
+  try {
+    await lock.query('select pg_advisory_lock(727001)');
+    await migrate(db);
+  } finally {
+    await lock.query('select pg_advisory_unlock(727001)').catch(() => {});
+    lock.release();
+  }
+  return db;
 }
 
 async function openPglite(dir: string): Promise<Db> {
@@ -91,7 +104,7 @@ async function open(): Promise<Db> {
     throw new Error('DATABASE_URL is not set. Production does not fall back to the in-process development database.');
   }
   const db = await openPglite(process.env.PGLITE_DIR ?? path.join(process.cwd(), '.pglite'));
-  await migrate(db); // the dev database migrates itself; production runs `npm run migrate`
+  await migrate(db);
   return db;
 }
 
@@ -106,8 +119,21 @@ export function getDb(): Promise<Db> {
 /** Tests only: start from a fresh in-memory database. */
 export async function resetDbForTests(): Promise<Db> {
   if (holder.__noorDb) await (await holder.__noorDb).close();
-  process.env.PGLITE_DIR = 'memory://';
-  delete process.env.DATABASE_URL;
+  // TEST_DATABASE_URL runs the same tests against a real, empty, throwaway Postgres. Its public schema is wiped first.
+  const real = process.env.TEST_DATABASE_URL;
+  if (real) {
+    if (!/@(127\.0\.0\.1|localhost)[:/]/.test(real)) throw new Error('TEST_DATABASE_URL must point at a local throwaway database.');
+    const mod = await import('pg');
+    const pg = mod.default ?? mod;
+    const c = new pg.Client({ connectionString: real });
+    await c.connect();
+    await c.query('drop schema public cascade; create schema public');
+    await c.end();
+    process.env.DATABASE_URL = real;
+  } else {
+    process.env.PGLITE_DIR = 'memory://';
+    delete process.env.DATABASE_URL;
+  }
   holder.__noorDb = open();
   return holder.__noorDb;
 }
