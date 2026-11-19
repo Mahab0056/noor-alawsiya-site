@@ -40,7 +40,7 @@ async function Team() {
       </div>
       <div className="row">
         <div className="card">
-          <table className="st" role="table">
+          <table className="st team" role="table">
             <thead role="rowgroup">
               <tr role="row">
                 <th role="columnheader">المشرف</th>

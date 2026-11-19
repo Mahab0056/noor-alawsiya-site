@@ -84,7 +84,7 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
       if (!YEAR_SHAPE.test(s.birthYear.trim())) e.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
       else if (toYear(s.birthYear) < thisYear - 90 || toYear(s.birthYear) > thisYear - 5) e.birthYear = 'سنة الميلاد غير صحيحة.';
       if (!normalizePhone(s.phone)) e.phone = 'اكتب رقم هاتف عراقياً صحيحاً، مثل 07701234567.';
-      if (s.password.length < MIN_PASSWORD) e.password = `كلمة المرور ${AR.format(MIN_PASSWORD)} خانات على الأقل.`;
+      if (s.password.length < MIN_PASSWORD) e.password = `كلمة المرور ${AR.format(MIN_PASSWORD)} أحرف على الأقل.`;
       if (minor) {
         if (s.guardianName.trim().length < 5) e.guardianName = 'اكتب اسم ولي الأمر.';
         if (!normalizePhone(s.guardianPhone)) e.guardianPhone = 'اكتب رقم هاتف ولي الأمر.';
@@ -191,7 +191,7 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
                   <input {...fieldProps('phone', { error: errors.phone, hint: true, required: true, ltr: true })} value={s.phone} onChange={(e) => set('phone', e.target.value)} type="tel" inputMode="tel" autoComplete="tel" maxLength={20} />
                 </Field>
               </div>
-              <Field id="password" label="كلمة المرور" hint={`${AR.format(MIN_PASSWORD)} خانات على الأقل. احفظها لمتابعة الطلب والدروس.`} error={errors.password} required>
+              <Field id="password" label="كلمة المرور" hint={`${AR.format(MIN_PASSWORD)} أحرف على الأقل. احفظها لمتابعة الطلب والدروس.`} error={errors.password} required>
                 <input {...fieldProps('password', { error: errors.password, hint: true, required: true, ltr: true })} value={s.password} onChange={(e) => set('password', e.target.value)} type="password" autoComplete="new-password" maxLength={200} />
               </Field>
             </div>

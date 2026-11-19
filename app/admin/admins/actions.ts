@@ -51,7 +51,7 @@ export async function inviteAction(_prev: TeamState, form: FormData): Promise<Te
 export async function resendAction(_prev: TeamState, form: FormData): Promise<TeamState> {
   const admin = await requireSuperAdmin();
   const id = targetId(form);
-  if (!id) return { error: 'لم يتم.' };
+  if (!id) return { error: 'تعذّر تنفيذ الطلب. حدّث الصفحة وحاول مرة أخرى.' };
   try {
     await resendInvite(await getDb(), admin.id, id, { mail: mailConfig() }, { reset: text(form, 'reset') === '1' });
   } catch (e) {
@@ -64,14 +64,14 @@ export async function resendAction(_prev: TeamState, form: FormData): Promise<Te
 async function simple(form: FormData, run: (actorId: number, id: number) => Promise<void>): Promise<TeamState> {
   const admin = await requireSuperAdmin();
   const id = targetId(form);
-  if (!id) return { error: 'لم يتم.' };
+  if (!id) return { error: 'تعذّر تنفيذ الطلب. حدّث الصفحة وحاول مرة أخرى.' };
   try {
     await run(admin.id, id);
   } catch (e) {
     return { error: explain(e) };
   }
   refresh();
-  return { ok: 'تم.' };
+  return { ok: 'تمّ التنفيذ.' };
 }
 
 export async function revokeAction(_prev: TeamState, form: FormData) {
