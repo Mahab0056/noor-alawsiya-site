@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { hoursText, minutesText, triesLeftText } from '../lib/format';
 import { DEFAULT_MAIL_FROM, inviteEmail, loginCodeEmail, mailConfig } from '../lib/mail';
+import { readFileSync } from 'node:fs';
+import { COURSES_LD, ldJson, SCHOOL_LD } from '../lib/seo';
 
 test('counted nouns agree with the number and use Arabic-Indic digits', () => {
   assert.equal(minutesText(10), '١٠ دقائق');
@@ -30,4 +32,19 @@ test('the default sender is the school by its Arabic name on the verified domain
   assert.equal(DEFAULT_MAIL_FROM, 'نور الأوصياء <noreply@mail.noor-alawsiya.com>');
   const cfg = mailConfig({ RESEND_API_KEY: 're_test_12345678', APP_ORIGIN: 'https://noor-alawsiya.com' });
   assert.equal(cfg.from, DEFAULT_MAIL_FROM);
+});
+
+test('JSON-LD cannot close its script tag, and still parses to the same data', () => {
+  const data = { name: '</script><script>alert(1)</script>', list: ['a<b'] };
+  const out = ldJson(data);
+  assert.ok(!out.includes('<'), out);
+  assert.deepEqual(JSON.parse(out), data);
+  assert.deepEqual(JSON.parse(ldJson(SCHOOL_LD)), SCHOOL_LD);
+  assert.deepEqual(JSON.parse(ldJson(COURSES_LD)), COURSES_LD);
+});
+
+test('the top strip stays a labelled landmark (merge cc3d137 had dropped it)', () => {
+  const src = readFileSync('components/SiteChrome.tsx', 'utf8');
+  assert.match(src, /<aside className="strip" aria-label="[^"]+">/);
+  assert.ok(!src.includes('<div className="strip">'));
 });

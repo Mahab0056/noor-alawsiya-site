@@ -8,7 +8,8 @@ import { getDb, migrate } from '../lib/db';
 async function main() {
   const db = await getDb();
   const applied = await migrate(db);
-  console.log(applied.length ? `migrations applied now: ${applied.join(', ')}` : 'migrations: nothing to apply');
+  // getDb() has already applied any pending file when it opened the database, so `applied` is normally empty here.
+  console.log(applied.length ? `migrations applied now: ${applied.join(', ')}` : 'migrations: up to date (pending files, if any, were applied when the database was opened)');
   const rows = await db.query<{ name: string }>('select name from schema_migrations order by name');
   console.log('migrations in the database:', rows.map((r) => r.name).join(', '));
   await db.close();

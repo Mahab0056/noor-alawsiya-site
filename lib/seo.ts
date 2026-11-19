@@ -22,6 +22,9 @@ const ORGANIZATION = {
 
 export const SCHOOL_LD = { '@context': 'https://schema.org', ...ORGANIZATION };
 
+/** JSON for a <script type="application/ld+json">: every `<` becomes the JSON escape \u003c, so no value can close the tag. */
+export const ldJson = (data: unknown) => JSON.stringify(data).replace(/</g, '\\u003c');
+
 export const COURSES_LD = {
   '@context': 'https://schema.org',
   '@type': 'ItemList',

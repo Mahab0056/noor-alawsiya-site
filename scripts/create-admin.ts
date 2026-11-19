@@ -1,14 +1,15 @@
 /**
  * Admin accounts from the command line.
  *
- * Production (and anywhere with DATABASE_URL): invite by e-mail. The invited admin sets their own password and turns
- * on their authenticator app from the link; nothing secret is ever printed here.
+ * Production (and anywhere with DATABASE_URL): invite by e-mail. The invited admin sets their own name and password from
+ * the link (with ADMIN_TOTP=1 also an authenticator app); nothing secret is ever printed here.
  *
  *   npm run create-admin -- --invite someone@example.com --role super      # super admin
  *   npm run create-admin -- --invite someone@example.com --role admin      # admin (reviews requests, edits the form)
- *   npm run create-admin -- --invite someone@example.com --role super --reset   # an active admin lost their phone
+ *   npm run create-admin -- --invite someone@example.com --role super --reset   # re-invite an active admin (lost password,
+ *                                                                                # or an old `owner` admin made super admin)
  *
- * Needs RESEND_API_KEY, APP_ORIGIN (and MAIL_FROM, default «نور الأوصياء <no-reply@barmjini.com>»). If any is missing,
+ * Needs RESEND_API_KEY, APP_ORIGIN (and EMAIL_FROM, default «نور الأوصياء <noreply@mail.noor-alawsiya.com>»). If any is missing,
  * or Resend refuses the message, the command fails and creates nothing. It never prints the link, the address or a key.
  *
  * Local development only (no DATABASE_URL): the old direct way, which prints the TOTP secret once.

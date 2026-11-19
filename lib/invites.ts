@@ -77,7 +77,7 @@ export async function inviteAdmin(db: Db, input: { email: string; role: InviteRo
     } else {
       adminId = Number(existing.id);
       if (adminId === input.actorId) throw new InviteError('self', 'You cannot re-invite yourself.');
-      if (existing.confirmed && !input.reset) throw new InviteError('already-active', 'This admin is already active. Use --reset to invite them again (their password and authenticator are cleared).');
+      if (existing.confirmed && !input.reset) throw new InviteError('already-active', 'This admin is already active. Use --reset to invite them again: their password, sessions and remembered devices are cleared, and they cannot sign in until they accept the new link.');
       await resetToPending(t, adminId, input.role);
     }
     return issue(t, adminId, input.role, input.actorId, existing ? (existing.confirmed ? 'admin.reinvite' : 'admin.invite.resend') : 'admin.invite', email, deps);

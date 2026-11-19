@@ -29,7 +29,7 @@ export function SiteHeader({ current }: { current?: NavKey }) {
       <a className="skip" href="#main">
         تخطَّ إلى المحتوى
       </a>
-      <div className="strip">
+      <aside className="strip" aria-label="معلومات سريعة عن المدرسة">
         <div className="wrap">
           <span>
             <Icon name="pin" size="s" />
@@ -43,7 +43,7 @@ export function SiteHeader({ current }: { current?: NavKey }) {
           </a>
           <span className="sp">التسجيل مفتوح للدورات الحالية</span>
         </div>
-      </div>
+      </aside>
       <header className="nav">
         <div className="wrap">
           <Logo />
