@@ -65,7 +65,7 @@ export function AdminLoginForm({ appCode = false }: { appCode?: boolean }) {
           </p>
         )}
         <Field id="code" label="رمز الدخول" hint="ستة أرقام من رسالة البريد">
-          <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+          <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={11} autoFocus />
         </Field>
         <label className="opt" style={{ marginBottom: 16 }}>
           <input type="checkbox" name="remember" />

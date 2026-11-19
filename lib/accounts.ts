@@ -60,7 +60,10 @@ export type AdminLoginOptions = { deviceToken?: string; codeDeps?: () => CodeDep
  */
 export async function loginAdmin(db: Db, emailInput: string, password: string, code: string, ip: string, opts: AdminLoginOptions = {}): Promise<AdminLogin> {
   const email = normalizeEmail(emailInput).slice(0, 200);
-  const attempt = await reserveAttempt(db, 'admin', email, ip);
+  // A device this admin marked as remembered is exempt from the all-address ceiling (lib/auth.ts), not from the others.
+  const [known] = opts.deviceToken ? await db.query<{ id: string }>('select id from admins where lower(email) = $1', [email]) : [];
+  const trustedDevice = known ? await isRememberedDevice(db, Number(known.id), opts.deviceToken) : false;
+  const attempt = await reserveAttempt(db, 'admin', email, ip, { trustedDevice });
   if (attempt.throttled) return { ok: false, reason: 'throttled' };
 
   const [admin] = await db.query<{ id: string; email: string; password_hash: string; totp_secret: string | null; totp_last_step: string | null }>(
@@ -88,7 +91,7 @@ export async function loginAdmin(db: Db, emailInput: string, password: string, c
   if (!admin || !passwordOk) return { ok: false, reason: 'invalid' }; // the reserved row stays as the failure
   await markAttemptSucceeded(db, attempt.id); // the password was right; what follows has its own limits
   const adminId = Number(admin.id);
-  if (await isRememberedDevice(db, adminId, opts.deviceToken)) {
+  if (trustedDevice && Number(known.id) === adminId) {
     await db.query('update admins set last_login_at = now() where id = $1', [adminId]);
     return { ok: true, adminId };
   }

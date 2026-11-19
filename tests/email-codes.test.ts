@@ -156,7 +156,7 @@ test('Resend refusing: "mail-failed", and no code is kept', async () => {
 });
 
 test('remember this device: 30 days, this admin only; disabling the admin forgets it', async () => {
-  const device = await rememberDevice(db, staffId);
+  const device = (await rememberDevice(db, staffId))!;
   const days = (device.expiresAt.getTime() - Date.now()) / 86_400_000;
   assert.ok(days > 29.9 && days <= 30);
   assert.deepEqual(await signIn('staff@example.test', { deviceToken: device.token }), { ok: true, adminId: staffId });
@@ -170,7 +170,7 @@ test('remember this device: 30 days, this admin only; disabling the admin forget
   await db.query(`update admin_devices set created_at = now() - interval '31 days', expires_at = now() - interval '1 day'`);
   assert.ok(((r2) => !r2.ok && r2.reason === 'code-sent')(await signIn('staff@example.test', { deviceToken: device.token })));
   // Disabled, then enabled again: the device is forgotten.
-  const d2 = await rememberDevice(db, staffId);
+  const d2 = (await rememberDevice(db, staffId))!;
   await setAdminDisabled(db, superId, staffId, true);
   assert.equal(await getAdmin(db, staffId), null);
   await setAdminDisabled(db, superId, staffId, false);
@@ -217,13 +217,31 @@ test('two invite submits racing: only one activates', async () => {
   assert.equal(results.filter((r) => r.ok).length, 1);
 });
 
-test('admins: failures per e-mail are also capped across all addresses (forged or rotated client addresses)', async () => {
+test('admins: failures per e-mail are also capped across all addresses, but the owner keeps their remembered device', async () => {
+  const device = (await rememberDevice(db, superId))!;
   let throttled = 0;
   for (let i = 0; i < 110; i++) {
     const r = await signIn('super@example.test', { ip: `10.9.${Math.floor(i / 250)}.${(i % 250) + 1}`, password: 'wrong-password-123' });
     if (!r.ok && r.reason === 'throttled') throttled++;
   }
   assert.equal(throttled, 10, '100 failures, then refused');
+  // From a new address and a new device: refused while the flood lasts (a super admin can unlock).
+  assert.deepEqual(await signIn('super@example.test', { ip: '10.8.0.1' }), { ok: false, reason: 'throttled' });
+  // From the owner's remembered device: signed in (the review of afc066d proved this was refused before).
+  assert.deepEqual(await signIn('super@example.test', { ip: '10.8.0.2', deviceToken: device.token }), { ok: true, adminId: superId });
+  // Someone else's device token does not lift the ceiling.
+  const other = (await rememberDevice(db, staffId))!;
+  assert.deepEqual(await signIn('super@example.test', { ip: '10.8.0.3', deviceToken: other.token }), { ok: false, reason: 'throttled' });
+});
+
+test('a device is not remembered for an admin who was disabled meanwhile', async () => {
+  await db.query('update admins set disabled_at = now() where id = $1', [staffId]);
+  try {
+    assert.equal(await rememberDevice(db, staffId), null);
+    assert.equal((await db.query('select 1 from admin_devices where admin_id = $1', [staffId])).length, 0);
+  } finally {
+    await db.query('update admins set disabled_at = null where id = $1', [staffId]);
+  }
 });
 
 test('client address: X-Real-IP only when it is an IP; else the last X-Forwarded-For hop; else "unknown"', () => {

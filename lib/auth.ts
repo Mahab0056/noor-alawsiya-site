@@ -72,7 +72,8 @@ const MAX_PER_IDENTIFIER = 5;
 const MAX_PER_IP = 20;
 // Admins: failures per e-mail from ALL addresses together. The per-address count above is what normally stops a
 // guesser; this ceiling only matters if the client address can be forged or rotated (it bounds a distributed guess
-// at ~400 an hour), and it is high enough that locking an admin out takes a sustained flood. A super admin can unlock.
+// at ~400 an hour). It is NOT applied to a sign-in from a device this admin marked as remembered, so a stranger's
+// flood cannot lock the owner out of their own devices (only out of new ones, until it stops or a super admin unlocks).
 const MAX_PER_ADMIN_EMAIL = 100;
 
 /**
@@ -83,21 +84,21 @@ const MAX_PER_ADMIN_EMAIL = 100;
  * 300 of 300 in the review of 7d94546.) A refused attempt writes nothing, so hammering a locked identifier does not
  * extend the lock. Locks are always taken identifier first, then address, so two requests cannot deadlock.
  */
-export async function reserveAttempt(db: Db, scope: SessionKind, identifier: string, ip: string): Promise<{ id: number; throttled: boolean }> {
+export async function reserveAttempt(db: Db, scope: SessionKind, identifier: string, ip: string, opts: { trustedDevice?: boolean } = {}): Promise<{ id: number; throttled: boolean }> {
   await db.query(`delete from login_attempts where created_at < now() - interval '1 day'`);
   return db.tx(async (t) => {
     await t.query(`select pg_advisory_xact_lock(1, hashtext($1 || ':' || $2))`, [scope, identifier]);
     await t.query(`select pg_advisory_xact_lock(2, hashtext($1 || ':' || $2))`, [scope, ip]);
     const [row] = await t.query<{ by_id: string; by_ip: string; by_id_all: string }>(
-      // Admins: the per-identifier count only includes failures from this address. Guessing an admin password gets
-      // nowhere without the TOTP code, so a global per-email lock would only let a stranger lock the owner out.
+      // Admins: the per-identifier count only includes failures from this address (a global per-email lock of 5 would
+      // let a stranger lock the owner out); the much higher all-address ceiling (MAX_PER_ADMIN_EMAIL) is counted too.
       `select count(*) filter (where identifier = $2${scope === 'admin' ? ' and ip = $3' : ''}) as by_id, count(*) filter (where ip = $3) as by_ip,
               count(*) filter (where identifier = $2) as by_id_all
        from login_attempts
        where scope = $1 and not succeeded and created_at > now() - interval '${WINDOW}' and (identifier = $2 or ip = $3)`,
       [scope, identifier, ip]
     );
-    const allAddresses = scope === 'admin' && Number(row.by_id_all) >= MAX_PER_ADMIN_EMAIL;
+    const allAddresses = scope === 'admin' && !opts.trustedDevice && Number(row.by_id_all) >= MAX_PER_ADMIN_EMAIL;
     if (Number(row.by_id) >= MAX_PER_IDENTIFIER || Number(row.by_ip) >= MAX_PER_IP || allAddresses) return { id: 0, throttled: true };
     const [{ id }] = await t.query<{ id: string }>('insert into login_attempts (scope, identifier, ip, succeeded) values ($1, $2, $3, false) returning id', [scope, identifier, ip]);
     return { id: Number(id), throttled: false };

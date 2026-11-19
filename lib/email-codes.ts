@@ -33,11 +33,12 @@ export type CodeDeps = { mail: MailConfig; fetchImpl?: Fetch };
 export type IssueResult = { ok: true; challenge: string } | { ok: false; reason: 'throttled' };
 
 /**
- * Makes a code and sends it, in one transaction that includes the send: if Resend refuses, nothing is kept and this
- * throws. Returns the challenge for the cookie.
+ * Makes a code and sends it. The row is written in a short transaction (the hourly cap is checked under a row lock),
+ * then the e-mail is sent outside it, so a slow Resend call holds no lock and no extra connection. If Resend refuses,
+ * the row is deleted and this throws. Returns the challenge for the cookie.
  */
 export async function issueLoginCode(db: Db, adminId: number, email: string, deps: CodeDeps): Promise<IssueResult> {
-  return db.tx(async (t) => {
+  const issued = await db.tx(async (t) => {
     // One issuer at a time per admin, so the hourly cap holds under parallel requests.
     await t.query('select id from admins where id = $1 for update', [adminId]);
     const [{ n }] = await t.query<{ n: string }>(`select count(*) as n from admin_login_codes where admin_id = $1 and created_at > now() - interval '1 hour'`, [adminId]);
@@ -46,14 +47,20 @@ export async function issueLoginCode(db: Db, adminId: number, email: string, dep
     await t.query('update admin_login_codes set used_at = now() where admin_id = $1 and used_at is null', [adminId]); // only the newest code works
     const challenge = randomBytes(32).toString('base64url');
     const code = String(randomInt(0, 1_000_000)).padStart(6, '0');
-    await t.query(`insert into admin_login_codes (admin_id, challenge_hash, code_mac, expires_at) values ($1, $2, $3, now() + interval '${CODE_MINUTES} minutes')`, [
-      adminId,
-      sha256(challenge),
-      mac(challenge, code),
-    ]);
-    await sendMail(deps.mail, { to: email, ...loginCodeEmail(code, CODE_MINUTES) }, deps.fetchImpl);
-    return { ok: true, challenge } as const;
+    const [row] = await t.query<{ id: string }>(
+      `insert into admin_login_codes (admin_id, challenge_hash, code_mac, expires_at) values ($1, $2, $3, now() + interval '${CODE_MINUTES} minutes') returning id`,
+      [adminId, sha256(challenge), mac(challenge, code)]
+    );
+    return { ok: true, challenge, code, id: Number(row.id) } as const;
   });
+  if (!issued.ok) return issued;
+  try {
+    await sendMail(deps.mail, { to: email, ...loginCodeEmail(issued.code, CODE_MINUTES) }, deps.fetchImpl);
+  } catch (e) {
+    await db.query('delete from admin_login_codes where id = $1', [issued.id]);
+    throw e;
+  }
+  return { ok: true, challenge: issued.challenge };
 }
 
 export type VerifyResult = { ok: true; adminId: number } | { ok: false; reason: 'code'; triesLeft: number } | { ok: false; reason: 'expired' };
@@ -92,19 +99,23 @@ export async function verifyLoginCode(db: Db, challenge: string | undefined, cod
 
 // ---------------------------------------------------------------- remembered devices
 
-/** Returns the raw token for the cookie; only its hash is stored. */
-export async function rememberDevice(db: Db, adminId: number) {
+/** Returns the raw token for the cookie (only its hash is stored), or null if the admin is no longer active. */
+export async function rememberDevice(db: Db, adminId: number): Promise<{ token: string; expiresAt: Date } | null> {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(Date.now() + DEVICE_DAYS * 24 * 3600_000);
-  await db.tx(async (t) => {
+  const stored = await db.tx(async (t) => {
     await t.query('delete from admin_devices where expires_at < now()');
+    // Locks the admin row, so a disable or re-invite in parallel either comes first (nothing stored) or after (and forgets it).
+    const [active] = await t.query('select id from admins where id = $1 and activated_at is not null and disabled_at is null for update', [adminId]);
+    if (!active) return false;
     await t.query('insert into admin_devices (admin_id, token_hash, expires_at) values ($1, $2, $3)', [adminId, sha256(token), expiresAt]);
     await t.query(
       `delete from admin_devices where admin_id = $1 and id not in (select id from admin_devices where admin_id = $1 order by created_at desc, id desc limit ${MAX_DEVICES})`,
       [adminId]
     );
+    return true;
   });
-  return { token, expiresAt };
+  return stored ? { token, expiresAt } : null;
 }
 
 /** True only for an unexpired token remembered by this same admin. */

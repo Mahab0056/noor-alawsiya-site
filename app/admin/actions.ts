@@ -55,13 +55,13 @@ async function codeStep(form: FormData): Promise<AdminLoginState> {
   const result = await verifyLoginCode(await getDb(), store.get(ADMIN_CODE_COOKIE)?.value, text(form, 'code'));
   if (!result.ok) {
     if (result.reason === 'code') return { step: 'code', error: `الرمز غير صحيح. بقيت ${result.triesLeft} محاولات لهذا الرمز.` };
-    store.delete(ADMIN_CODE_COOKIE);
+    store.delete({ name: ADMIN_CODE_COOKIE, path: '/admin' });
     return { error: 'انتهت صلاحية الرمز أو كثرت المحاولات. ادخل بكلمة المرور من جديد ليصلك رمز جديد.' };
   }
-  store.delete(ADMIN_CODE_COOKIE);
+  store.delete({ name: ADMIN_CODE_COOKIE, path: '/admin' });
   if (form.get('remember') === 'on') {
     const device = await rememberDevice(await getDb(), result.adminId);
-    store.set(ADMIN_DEVICE_COOKIE, device.token, { httpOnly: true, secure: secureCookie(), sameSite: 'lax', path: '/admin', expires: device.expiresAt });
+    if (device) store.set(ADMIN_DEVICE_COOKIE, device.token, { httpOnly: true, secure: secureCookie(), sameSite: 'lax', path: '/admin', expires: device.expiresAt });
   }
   await startSession('admin', result.adminId);
   redirect('/admin');
