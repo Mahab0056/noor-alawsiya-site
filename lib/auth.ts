@@ -71,35 +71,50 @@ const WINDOW = '15 minutes';
 const MAX_PER_IDENTIFIER = 5;
 const MAX_PER_IP = 20;
 
-/** True when this identifier or IP has too many recent failures. */
-export async function isThrottled(db: Db, scope: SessionKind, identifier: string, ip: string) {
-  const [row] = await db.query<{ by_id: string; by_ip: string }>(
-    `select count(*) filter (where identifier = $2) as by_id, count(*) filter (where ip = $3) as by_ip
-     from login_attempts
-     where scope = $1 and not succeeded and created_at > now() - interval '${WINDOW}' and (identifier = $2 or ip = $3)`,
-    [scope, identifier, ip]
-  );
-  return Number(row.by_id) >= MAX_PER_IDENTIFIER || Number(row.by_ip) >= MAX_PER_IP;
+/**
+ * Atomic check-and-reserve. In one short transaction, take a lock on this identifier and on this address, count the
+ * recent failures, and only if under the limits write this attempt as a failure BEFORE the password is checked.
+ * Parallel requests for the same identifier or address queue on the lock, so at most MAX of them get through however
+ * many arrive at once. (Checking first and writing after the password check let a burst of parallel requests all pass:
+ * 300 of 300 in the review of 7d94546.) A refused attempt writes nothing, so hammering a locked identifier does not
+ * extend the lock. Locks are always taken identifier first, then address, so two requests cannot deadlock.
+ */
+export async function reserveAttempt(db: Db, scope: SessionKind, identifier: string, ip: string): Promise<{ id: number; throttled: boolean }> {
+  await db.query(`delete from login_attempts where created_at < now() - interval '1 day'`);
+  return db.tx(async (t) => {
+    await t.query(`select pg_advisory_xact_lock(1, hashtext($1 || ':' || $2))`, [scope, identifier]);
+    await t.query(`select pg_advisory_xact_lock(2, hashtext($1 || ':' || $2))`, [scope, ip]);
+    const [row] = await t.query<{ by_id: string; by_ip: string }>(
+      `select count(*) filter (where identifier = $2) as by_id, count(*) filter (where ip = $3) as by_ip
+       from login_attempts
+       where scope = $1 and not succeeded and created_at > now() - interval '${WINDOW}' and (identifier = $2 or ip = $3)`,
+      [scope, identifier, ip]
+    );
+    if (Number(row.by_id) >= MAX_PER_IDENTIFIER || Number(row.by_ip) >= MAX_PER_IP) return { id: 0, throttled: true };
+    const [{ id }] = await t.query<{ id: string }>('insert into login_attempts (scope, identifier, ip, succeeded) values ($1, $2, $3, false) returning id', [scope, identifier, ip]);
+    return { id: Number(id), throttled: false };
+  });
 }
 
-export async function recordAttempt(db: Db, scope: SessionKind, identifier: string, ip: string, succeeded: boolean) {
-  await db.query('insert into login_attempts (scope, identifier, ip, succeeded) values ($1, $2, $3, $4)', [scope, identifier, ip, succeeded]);
-  // Failures are not cleared by a success: they age out. Otherwise anyone able to log in on the same
-  // identifier (a second account on a shared phone) could reset the counter and keep guessing.
-  await db.query(`delete from login_attempts where created_at < now() - interval '1 day'`);
+/** The reserved attempt turned out fine. Earlier failures stay: they age out, a success does not clear them. */
+export async function markAttemptSucceeded(db: Db, id: number) {
+  await db.query('update login_attempts set succeeded = true where id = $1', [id]);
 }
 
 // ---------------------------------------------------------------- registration throttling
 
 const MAX_REGISTRATIONS_PER_IP = 8; // per hour; a family or a school office registering several children stays under it
 
-/** Counts one registration submission from this address and says whether it is still within the limit. */
+/** Counts one registration submission from this address and says whether it is still within the limit (atomic, as above). */
 export async function allowRegistration(db: Db, ip: string) {
   await db.query(`delete from registration_attempts where created_at < now() - interval '1 day'`);
-  const [row] = await db.query<{ n: string }>(`select count(*) as n from registration_attempts where ip = $1 and created_at > now() - interval '1 hour'`, [ip]);
-  if (Number(row.n) >= MAX_REGISTRATIONS_PER_IP) return false;
-  await db.query('insert into registration_attempts (ip) values ($1)', [ip]);
-  return true;
+  return db.tx(async (t) => {
+    await t.query(`select pg_advisory_xact_lock(3, hashtext($1))`, [ip]);
+    const [row] = await t.query<{ n: string }>(`select count(*) as n from registration_attempts where ip = $1 and created_at > now() - interval '1 hour'`, [ip]);
+    if (Number(row.n) >= MAX_REGISTRATIONS_PER_IP) return false;
+    await t.query('insert into registration_attempts (ip) values ($1)', [ip]);
+    return true;
+  });
 }
 
 // ---------------------------------------------------------------- TOTP (RFC 6238, SHA-1, 30 s, 6 digits)

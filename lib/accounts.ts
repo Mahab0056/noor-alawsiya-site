@@ -1,5 +1,5 @@
 import 'server-only';
-import { dummyHash, hashPassword, isThrottled, MIN_PASSWORD, newTotpSecret, normalizeEmail, normalizePhone, recordAttempt, seal, unseal, matchTotpStep, verifyPassword } from './auth';
+import { dummyHash, hashPassword, markAttemptSucceeded, MIN_PASSWORD, newTotpSecret, normalizeEmail, normalizePhone, reserveAttempt, seal, unseal, matchTotpStep, verifyPassword } from './auth';
 import type { Db } from './db';
 
 /** Logging in: students by phone and password, admins by email, password and a TOTP code. */
@@ -17,7 +17,8 @@ export type StudentLogin = { ok: true; studentId: number } | { ok: false; reason
 export async function loginStudent(db: Db, phoneInput: string, password: string, ip: string, fullName?: string): Promise<StudentLogin> {
   const phone = normalizePhone(phoneInput);
   const identifier = phone ?? 'invalid-phone'; // never store what was typed: it may be a password in the wrong box
-  if (await isThrottled(db, 'student', identifier, ip)) return { ok: false, reason: 'throttled' };
+  const attempt = await reserveAttempt(db, 'student', identifier, ip);
+  if (attempt.throttled) return { ok: false, reason: 'throttled' };
 
   const accounts = phone ? await db.query<{ id: string; full_name: string; password_hash: string }>('select id, full_name, password_hash from students where phone = $1 order by id limit $2', [phone, MAX_ACCOUNTS_PER_PHONE]) : [];
   const matches: { id: number; name: string }[] = [];
@@ -28,12 +29,14 @@ export async function loginStudent(db: Db, phoneInput: string, password: string,
 
   const chosen = matches.length === 1 ? matches[0] : matches.find((m) => m.name === fullName);
   if (chosen) {
-    await recordAttempt(db, 'student', identifier, ip, true);
+    await markAttemptSucceeded(db, attempt.id);
     return { ok: true, studentId: chosen.id };
   }
-  if (matches.length > 1) return { ok: false, reason: 'choose', names: matches.map((m) => m.name) };
-  await recordAttempt(db, 'student', identifier, ip, false);
-  return { ok: false, reason: 'invalid' };
+  if (matches.length > 1) {
+    await markAttemptSucceeded(db, attempt.id); // the password was right; only the name is still to choose
+    return { ok: false, reason: 'choose', names: matches.map((m) => m.name) };
+  }
+  return { ok: false, reason: 'invalid' }; // the reserved row stays as the failure
 }
 
 export type AdminLogin = { ok: true; adminId: number } | { ok: false; reason: LoginFailure };
@@ -41,7 +44,8 @@ export type AdminLogin = { ok: true; adminId: number } | { ok: false; reason: Lo
 /** Password and TOTP are checked together and fail the same way, so a wrong code does not confirm the password. */
 export async function loginAdmin(db: Db, emailInput: string, password: string, code: string, ip: string): Promise<AdminLogin> {
   const email = normalizeEmail(emailInput).slice(0, 200);
-  if (await isThrottled(db, 'admin', email, ip)) return { ok: false, reason: 'throttled' };
+  const attempt = await reserveAttempt(db, 'admin', email, ip);
+  if (attempt.throttled) return { ok: false, reason: 'throttled' };
 
   const [admin] = await db.query<{ id: string; password_hash: string; totp_secret: string | null; totp_last_step: string | null }>(
     'select id, password_hash, totp_secret, totp_last_step from admins where lower(email) = $1',
@@ -52,12 +56,14 @@ export async function loginAdmin(db: Db, emailInput: string, password: string, c
   // A code is good once: a step at or before the last accepted one is refused, so an observed code cannot be replayed.
   const codeOk = step !== null && step > Number(admin?.totp_last_step ?? 0);
   if (admin && passwordOk && codeOk) {
-    await recordAttempt(db, 'admin', email, ip, true);
-    await db.query('update admins set last_login_at = now(), totp_last_step = $2 where id = $1', [admin.id, step]);
-    return { ok: true, adminId: Number(admin.id) };
+    // Claim the step atomically: of two logins racing with the same code, only one updates the row.
+    const claimed = await db.query('update admins set last_login_at = now(), totp_last_step = $2 where id = $1 and (totp_last_step is null or totp_last_step < $2) returning id', [admin.id, step]);
+    if (claimed.length === 1) {
+      await markAttemptSucceeded(db, attempt.id);
+      return { ok: true, adminId: Number(admin.id) };
+    }
   }
-  await recordAttempt(db, 'admin', email, ip, false);
-  return { ok: false, reason: 'invalid' };
+  return { ok: false, reason: 'invalid' }; // the reserved row stays as the failure
 }
 
 /** Creates an admin with two-step verification on from the start. Returns the TOTP secret to show once. */
