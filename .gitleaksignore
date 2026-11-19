@@ -1,0 +1,4 @@
+# Reviewed one-off false positive (19/11/2026, awsiya-ci-baseline; kept by awsiya-ci-gate). Not a secret.
+# Recurring test patterns (migration names, placeholder Resend key) are allowlisted in .gitleaks.toml instead.
+# tests/flows.test.ts:142 (now 143) - public RFC 6238 TOTP test vector, base32 of "12345678901234567890"
+184ed9aba5e0f48b832cd04a58f0e73f890686d9:tests/flows.test.ts:generic-api-key:142
