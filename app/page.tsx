@@ -75,7 +75,7 @@ export default function Home() {
             </div>
             <div className="stage">
               <div className="arch">
-                <Image src="/img/mushaf.jpg" alt="مصحف مفتوح على حامله في الجامع" fill sizes="(max-width: 900px) 84vw, 440px" priority />
+                <Image src="/img/mushaf.jpg" alt="مصحف مفتوح على حامله في الجامع" fill sizes="(max-width: 900px) 84vw, 440px" quality={60} priority />
               </div>
               <div className="float a">
                 <span className="ic">
