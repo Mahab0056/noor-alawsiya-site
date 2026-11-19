@@ -1,9 +1,12 @@
 import 'server-only';
 import { dummyHash, hashPassword, markAttemptSucceeded, MIN_PASSWORD, newTotpSecret, normalizeEmail, normalizePhone, reserveAttempt, seal, unseal, matchTotpStep, verifyPassword } from './auth';
 import type { Db } from './db';
+import { isRememberedDevice, issueLoginCode, type CodeDeps } from './email-codes';
+import { adminTotpEnabled } from './flags';
 import type { AdminRole } from './invites';
+import { mailConfig } from './mail';
 
-/** Logging in: students by phone and password, admins by email, password and a TOTP code. */
+/** Logging in: students by phone and password; admins by e-mail and password, then a code (e-mail, or app if ADMIN_TOTP=1). */
 
 import { MAX_ACCOUNTS_PER_PHONE } from './form-rules';
 
@@ -40,32 +43,61 @@ export async function loginStudent(db: Db, phoneInput: string, password: string,
   return { ok: false, reason: 'invalid' }; // the reserved row stays as the failure
 }
 
-export type AdminLogin = { ok: true; adminId: number } | { ok: false; reason: LoginFailure };
+export type AdminLogin =
+  | { ok: true; adminId: number }
+  | { ok: false; reason: LoginFailure }
+  | { ok: false; reason: 'code-sent'; challenge: string }
+  | { ok: false; reason: 'mail-failed' };
 
-/** Password and TOTP are checked together and fail the same way, so a wrong code does not confirm the password. */
-export async function loginAdmin(db: Db, emailInput: string, password: string, code: string, ip: string): Promise<AdminLogin> {
+export type AdminLoginOptions = { deviceToken?: string; codeDeps?: () => CodeDeps };
+
+/**
+ * Admin sign-in.
+ * - ADMIN_TOTP=1 and the admin has an authenticator: password and app code are checked together and fail the same way,
+ *   so a wrong code does not confirm the password (the original path).
+ * - Otherwise (the default): the password alone; then, unless this device is remembered for this admin, a 6-digit code
+ *   is e-mailed and the answer is 'code-sent' with the challenge for the cookie (lib/email-codes.ts).
+ */
+export async function loginAdmin(db: Db, emailInput: string, password: string, code: string, ip: string, opts: AdminLoginOptions = {}): Promise<AdminLogin> {
   const email = normalizeEmail(emailInput).slice(0, 200);
   const attempt = await reserveAttempt(db, 'admin', email, ip);
   if (attempt.throttled) return { ok: false, reason: 'throttled' };
 
-  const [admin] = await db.query<{ id: string; password_hash: string; totp_secret: string | null; totp_last_step: string | null }>(
-    // Only active admins: a pending admin (invited, authenticator not confirmed yet) or a disabled one cannot sign in.
-    'select id, password_hash, totp_secret, totp_last_step from admins where lower(email) = $1 and totp_confirmed_at is not null and disabled_at is null',
+  const [admin] = await db.query<{ id: string; email: string; password_hash: string; totp_secret: string | null; totp_last_step: string | null }>(
+    // Only active admins: a pending admin (invited, not finished) or a disabled one cannot sign in.
+    'select id, email, password_hash, totp_secret, totp_last_step from admins where lower(email) = $1 and activated_at is not null and disabled_at is null',
     [email]
   );
   const passwordOk = await verifyPassword(admin?.password_hash ?? (await dummyHash()), password);
-  const step = admin?.totp_secret ? matchTotpStep(unseal(admin.totp_secret), code) : null;
-  // A code is good once: a step at or before the last accepted one is refused, so an observed code cannot be replayed.
-  const codeOk = step !== null && step > Number(admin?.totp_last_step ?? 0);
-  if (admin && passwordOk && codeOk) {
-    // Claim the step atomically: of two logins racing with the same code, only one updates the row.
-    const claimed = await db.query('update admins set last_login_at = now(), totp_last_step = $2 where id = $1 and (totp_last_step is null or totp_last_step < $2) returning id', [admin.id, step]);
-    if (claimed.length === 1) {
-      await markAttemptSucceeded(db, attempt.id);
-      return { ok: true, adminId: Number(admin.id) };
+
+  if (adminTotpEnabled() && admin?.totp_secret) {
+    const step = matchTotpStep(unseal(admin.totp_secret), code);
+    // A code is good once: a step at or before the last accepted one is refused, so an observed code cannot be replayed.
+    const codeOk = step !== null && step > Number(admin.totp_last_step ?? 0);
+    if (passwordOk && codeOk) {
+      // Claim the step atomically: of two logins racing with the same code, only one updates the row.
+      const claimed = await db.query('update admins set last_login_at = now(), totp_last_step = $2 where id = $1 and (totp_last_step is null or totp_last_step < $2) returning id', [admin.id, step]);
+      if (claimed.length === 1) {
+        await markAttemptSucceeded(db, attempt.id);
+        return { ok: true, adminId: Number(admin.id) };
+      }
     }
+    return { ok: false, reason: 'invalid' };
   }
-  return { ok: false, reason: 'invalid' }; // the reserved row stays as the failure
+
+  if (!admin || !passwordOk) return { ok: false, reason: 'invalid' }; // the reserved row stays as the failure
+  await markAttemptSucceeded(db, attempt.id); // the password was right; what follows has its own limits
+  const adminId = Number(admin.id);
+  if (await isRememberedDevice(db, adminId, opts.deviceToken)) {
+    await db.query('update admins set last_login_at = now() where id = $1', [adminId]);
+    return { ok: true, adminId };
+  }
+  try {
+    const issued = await issueLoginCode(db, adminId, admin.email, opts.codeDeps ? opts.codeDeps() : { mail: mailConfig() });
+    return issued.ok ? { ok: false, reason: 'code-sent', challenge: issued.challenge } : { ok: false, reason: 'throttled' };
+  } catch {
+    return { ok: false, reason: 'mail-failed' }; // missing settings or Resend refused; nothing was kept
+  }
 }
 
 /** Creates an admin with two-step verification on from the start. Returns the TOTP secret to show once. */
@@ -74,7 +106,7 @@ export async function createAdmin(db: Db, input: { name: string; email: string; 
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Invalid email.');
   if (input.password.length < Math.max(MIN_PASSWORD, 12)) throw new Error('Admin passwords need at least 12 characters.');
   const secret = newTotpSecret();
-  const [row] = await db.query<{ id: string }>('insert into admins (name, email, password_hash, totp_secret, role, totp_confirmed_at) values ($1, $2, $3, $4, $5, now()) returning id', [
+  const [row] = await db.query<{ id: string }>('insert into admins (name, email, password_hash, totp_secret, role, totp_confirmed_at, activated_at) values ($1, $2, $3, $4, $5, now(), now()) returning id', [
     input.name.trim(),
     email,
     await hashPassword(input.password),
@@ -93,6 +125,6 @@ export async function getStudent(db: Db, id: number): Promise<StudentProfile | n
 export type AdminProfile = { id: number; name: string; role: AdminRole };
 /** Only an active admin has a profile: a session of an admin who was disabled since, or reset to pending, is worth nothing. */
 export async function getAdmin(db: Db, id: number): Promise<AdminProfile | null> {
-  const [r] = await db.query<{ id: string; name: string; role: AdminRole }>('select id, name, role from admins where id = $1 and totp_confirmed_at is not null and disabled_at is null', [id]);
+  const [r] = await db.query<{ id: string; name: string; role: AdminRole }>('select id, name, role from admins where id = $1 and activated_at is not null and disabled_at is null', [id]);
   return r ? { id: Number(r.id), name: r.name, role: r.role } : null;
 }

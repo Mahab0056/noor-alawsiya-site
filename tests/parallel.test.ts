@@ -5,6 +5,10 @@ import { allowRegistration, totpAt } from '@/lib/auth';
 import { resetDbForTests, type Db } from '@/lib/db';
 import { register } from '@/lib/registration';
 
+// These tests cover the authenticator-app path, kept behind ADMIN_TOTP=1 (lib/flags.ts). The default e-mail-code
+// path is in tests/email-codes.test.ts. Read at call time, so setting it here is enough.
+process.env.ADMIN_TOTP = '1';
+
 // The limits must hold when requests arrive at the same time, not only one after another
 // (review of 7d94546: a burst of 300 parallel wrong passwords on one phone was checked 300 times).
 

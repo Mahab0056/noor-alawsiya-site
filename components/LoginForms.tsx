@@ -46,12 +46,40 @@ export function LoginForm() {
   );
 }
 
-export function AdminLoginForm() {
+/** `appCode`: the authenticator-app path (ADMIN_TOTP=1). Otherwise a code is e-mailed after the password. */
+export function AdminLoginForm({ appCode = false }: { appCode?: boolean }) {
   const [state, action, pending] = useActionState(adminLoginAction, undefined);
   const [email, setEmail] = useState('');
 
+  if (state?.step === 'code') {
+    return (
+      <form action={action} noValidate key="code">
+        <input type="hidden" name="step" value="code" />
+        {state.error ? (
+          <p className="alert bad" role="alert">
+            {state.error}
+          </p>
+        ) : (
+          <p className="alert info" role="status">
+            أرسلنا رمزاً من ستة أرقام إلى بريدك. يصلح مرة واحدة ولمدة عشر دقائق.
+          </p>
+        )}
+        <Field id="code" label="رمز الدخول" hint="ستة أرقام من رسالة البريد">
+          <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
+        </Field>
+        <label className="opt" style={{ marginBottom: 16 }}>
+          <input type="checkbox" name="remember" />
+          تذكّر هذا الجهاز ٣٠ يوماً (لا تختره على جهاز مشترك)
+        </label>
+        <button className="btn k" type="submit" disabled={pending}>
+          {pending ? 'جارٍ التحقق…' : 'تأكيد الدخول'}
+        </button>
+      </form>
+    );
+  }
+
   return (
-    <form action={action} noValidate>
+    <form action={action} noValidate key="password">
       {state?.error ? (
         <p className="alert bad" role="alert">
           {state.error}
@@ -63,9 +91,11 @@ export function AdminLoginForm() {
       <Field id="password" label="كلمة المرور">
         <input {...fieldProps('password', { required: true, ltr: true })} type="password" autoComplete="current-password" maxLength={200} />
       </Field>
-      <Field id="code" label="رمز التحقق" hint="ستة أرقام من تطبيق المصادقة">
-        <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
-      </Field>
+      {appCode ? (
+        <Field id="code" label="رمز التحقق" hint="ستة أرقام من تطبيق المصادقة">
+          <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={6} />
+        </Field>
+      ) : null}
       <button className="btn k" type="submit" disabled={pending}>
         {pending ? 'جارٍ الدخول…' : 'دخول الإدارة'}
       </button>

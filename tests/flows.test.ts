@@ -8,6 +8,10 @@ import { isMinorIn, visibleQuestions } from '@/lib/form-rules';
 import { resetDbForTests, type Db } from '@/lib/db';
 import { listQuestions, listStudentRegistrations, NO, register, validateStudent, YES, type RegistrationInput } from '@/lib/registration';
 
+// These tests cover the authenticator-app path, kept behind ADMIN_TOTP=1 (lib/flags.ts). The default e-mail-code
+// path is in tests/email-codes.test.ts. Read at call time, so setting it here is enough.
+process.env.ADMIN_TOTP = '1';
+
 let db: Db;
 let courseId: number;
 let adminId: number;

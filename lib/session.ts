@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { getAdmin, getStudent, type AdminProfile, type StudentProfile } from './accounts';
 import { createSession, destroySession, readSession, type SessionKind } from './auth';
+import { pickClientIp } from './client-ip';
 import { SESSION_COOKIE } from './cookie-names';
 import { getDb } from './db';
 
@@ -68,10 +69,14 @@ export async function requireSuperAdmin() {
 }
 
 /**
- * Client address for throttling. Railway's edge sets X-Real-IP itself, so a client cannot choose it.
- * X-Forwarded-For can carry values the client sent; only its last hop (added by the nearest proxy) is used, as a fallback.
+ * Client address for throttling. Railway documents X-Real-IP as the client's address, set by its edge. Because that
+ * cannot be proven from here, the value is only used when it parses as an IP address (anything else, e.g. a long
+ * random string meant to make a fresh bucket each time, is ignored), and the limits that matter most do not depend on
+ * it alone: students are limited per phone from every address, admins also per e-mail from every address
+ * (lib/auth.ts), and an admin sign-in needs a code sent by e-mail. X-Forwarded-For can carry client values; only its
+ * last hop (added by the nearest proxy) is used, as a fallback.
  */
 export async function clientIp() {
   const h = await headers();
-  return h.get('x-real-ip')?.trim() || h.get('x-forwarded-for')?.split(',').at(-1)?.trim() || 'unknown';
+  return pickClientIp(h.get('x-real-ip'), h.get('x-forwarded-for'));
 }

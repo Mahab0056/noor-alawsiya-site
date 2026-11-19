@@ -13,6 +13,10 @@ import { resetDbForTests, type Db } from '@/lib/db';
 import { confirmInviteTotp, InviteError, inviteAdmin, listAdmins, resendInvite, revokeInvite, setAdminDisabled, setInvitePassword, unlockAdmin, viewInvite } from '@/lib/invites';
 import { appOrigin, DEFAULT_MAIL_FROM, INVITE_SUBJECT, MailConfigError, mailConfig, RESEND_ENDPOINT, type Fetch, type MailConfig } from '@/lib/mail';
 
+// These tests cover the authenticator-app path, kept behind ADMIN_TOTP=1 (lib/flags.ts). The default e-mail-code
+// path is in tests/email-codes.test.ts. Read at call time, so setting it here is enough.
+process.env.ADMIN_TOTP = '1';
+
 let db: Db;
 let superId: number;
 let staffId: number;
@@ -93,7 +97,7 @@ test('invite → open link → set password → confirm a TOTP code → signed i
   assert.ok(!mismatch.ok && mismatch.reason === 'form' && mismatch.errors.password);
 
   const step1 = await setInvitePassword(db, token, { name: 'مدير جديد', password: 'new-admin-password', confirm: 'new-admin-password' }, IP);
-  assert.ok(step1.ok);
+  assert.ok(step1.ok && !step1.activated);
   assert.match(step1.uri, /^otpauth:\/\/totp\//);
   const [row] = await db.query<{ password_hash: string; totp_secret: string | null; totp_pending_secret: string }>('select password_hash, totp_secret, totp_pending_secret from admins where id = $1', [adminId]);
   assert.match(row.password_hash, /^\$argon2id\$/);
@@ -118,7 +122,7 @@ test('a used token cannot be used again', async () => {
   const { adminId } = await inviteAdmin(db, { email: 'reuse@example.test', role: 'staff', actorId: superId }, deps);
   const token = lastToken();
   const s = await setInvitePassword(db, token, { name: 'مشرف ثانٍ', password: 'reuse-admin-password', confirm: 'reuse-admin-password' }, IP);
-  assert.ok(s.ok);
+  assert.ok(s.ok && !s.activated);
   assert.ok((await confirmInviteTotp(db, token, totpAt(s.secret, Date.now()), IP)).ok);
   assert.deepEqual(await viewInvite(db, token, IP), { ok: false, reason: 'invalid' });
   assert.deepEqual(await setInvitePassword(db, token, { name: 'مهاجم', password: 'attacker-password', confirm: 'attacker-password' }, IP), { ok: false, reason: 'invalid' });
@@ -184,7 +188,7 @@ test('a pending admin cannot sign in, before or after setting a password', async
   const token = lastToken();
   assert.deepEqual(await loginAdmin(db, 'pending@example.test', '', '000000', IP), { ok: false, reason: 'invalid' });
   const s = await setInvitePassword(db, token, { name: 'مشرف معلّق', password: 'pending-admin-pass', confirm: 'pending-admin-pass' }, IP);
-  assert.ok(s.ok);
+  assert.ok(s.ok && !s.activated);
   assert.deepEqual(await loginAdmin(db, 'pending@example.test', 'pending-admin-pass', totpAt(s.secret, Date.now()), IP), { ok: false, reason: 'invalid' });
   // even a session row made by hand for them is worth nothing
   const { token: sessionToken } = await createSession(db, 'admin', adminId);
@@ -210,7 +214,7 @@ test('the operator command without RESEND_API_KEY fails clearly and creates noth
   const dir = mkdtempSync(path.join(tmpdir(), 'noor-invite-'));
   const pglite = path.join(dir, 'db');
   const env = { ...process.env, PGLITE_DIR: pglite, APP_ORIGIN: ORIGIN, RESEND_API_KEY: '', DATABASE_URL: '' };
-  const run = promisify(execFile)('npx', ['tsx', '--conditions=react-server', 'scripts/create-admin.ts', '--invite', 'cli@example.test', '--role', 'super'], { env, cwd: process.cwd() });
+  const run = promisify(execFile)(process.execPath, [path.join('node_modules', 'tsx', 'dist', 'cli.mjs'), '--conditions=react-server', 'scripts/create-admin.ts', '--invite', 'cli@example.test', '--role', 'super'], { env, cwd: process.cwd() });
   const err = await run.then(() => null, (e: { code: number; stderr: string; stdout: string }) => e);
   assert.ok(err, 'the command failed');
   assert.equal(err.code, 1);
@@ -240,7 +244,7 @@ test('wrong codes on one invite are limited; so are bad tokens from one address'
   await inviteAdmin(db, { email: 'throttle@example.test', role: 'staff', actorId: superId }, deps);
   const token = lastToken();
   const s = await setInvitePassword(db, token, { name: 'مشرف المحاولات', password: 'throttle-admin-pw', confirm: 'throttle-admin-pw' }, IP);
-  assert.ok(s.ok);
+  assert.ok(s.ok && !s.activated);
   for (let i = 0; i < 5; i++) assert.deepEqual(await confirmInviteTotp(db, token, '000000', `10.2.0.${i}`), { ok: false, reason: 'code' });
   assert.deepEqual(await confirmInviteTotp(db, token, totpAt(s.secret, Date.now()), '10.2.0.99'), { ok: false, reason: 'throttled' }, 'even the right code waits, from any address');
   await db.query('delete from invite_attempts');

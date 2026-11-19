@@ -5,10 +5,11 @@ import { inviteAction } from '@/app/admin/invite/actions';
 import { Field, fieldProps } from './Field';
 
 /**
- * Two steps. 1: name and password; the server proposes an authenticator secret and shows it once (QR + key).
- * 2: one valid code from the app; only then is the account active and signed in.
+ * Default: one step, name and password; the account is active and signed in at once (the link came by e-mail).
+ * With `appCode` (ADMIN_TOTP=1) two steps: 1: name and password; the server proposes an authenticator secret and shows
+ * it once (QR + key). 2: one valid code from the app; only then is the account active and signed in.
  */
-export function InviteForm({ token }: { token: string }) {
+export function InviteForm({ token, appCode = false }: { token: string; appCode?: boolean }) {
   const [state, action, pending] = useActionState(inviteAction, undefined);
 
   if (state?.step === 'dead') {
@@ -71,7 +72,7 @@ export function InviteForm({ token }: { token: string }) {
         <input {...fieldProps('confirm', { required: true, ltr: true })} type="password" autoComplete="new-password" maxLength={200} />
       </Field>
       <button className="btn k" type="submit" disabled={pending}>
-        {pending ? 'جارٍ الحفظ…' : 'التالي: تطبيق المصادقة'}
+        {pending ? 'جارٍ الحفظ…' : appCode ? 'التالي: تطبيق المصادقة' : 'حفظ والدخول'}
       </button>
     </form>
   );

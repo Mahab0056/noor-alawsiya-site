@@ -35,7 +35,7 @@ async function Team() {
       <div className="ph">
         <div>
           <h1>المشرفون</h1>
-          <p>من يدخل لوحة الإدارة. كل مشرف يضع كلمة مروره ويفعّل تطبيق المصادقة بنفسه من رابط الدعوة.</p>
+          <p>من يدخل لوحة الإدارة. كل مشرف يضع اسمه وكلمة مروره بنفسه من رابط الدعوة، ويصله رمز بالبريد عند الدخول من جهاز جديد.</p>
         </div>
       </div>
       <div className="row">
@@ -72,7 +72,7 @@ async function Team() {
                         {a.status === 'pending' && a.inviteExpiresAt ? <RowAction kind="revoke" id={a.id} label="سحب الدعوة" danger /> : null}
                         {a.status === 'active' && a.locked ? <RowAction kind="unlock" id={a.id} label="فك القفل" /> : null}
                         {a.status === 'active' ? (
-                          <RowAction kind="resend" id={a.id} extra={{ reset: '1' }} label="إعادة دعوة (هاتف ضائع)" danger />
+                          <RowAction kind="resend" id={a.id} extra={{ reset: '1' }} label="إعادة دعوة (كلمة مرور منسية)" danger />
                         ) : null}
                         {a.status !== 'pending' ? (
                           <RowAction kind="disable" id={a.id} extra={{ disabled: a.status === 'disabled' ? '0' : '1' }} label={a.status === 'disabled' ? 'إعادة تفعيل' : 'إيقاف'} danger={a.status !== 'disabled'} />
@@ -85,7 +85,7 @@ async function Team() {
             </tbody>
           </table>
           <p className="qfoot mute">
-            «فك القفل» يمسح محاولات الدخول الفاشلة الأخيرة لهذا المشرف فيستطيع المحاولة فوراً بدل انتظار ربع ساعة. «إعادة دعوة» تمسح كلمة مروره وتطبيق المصادقة وترسل رابطاً جديداً.
+            «فك القفل» يمسح محاولات الدخول الفاشلة الأخيرة لهذا المشرف فيستطيع المحاولة فوراً بدل انتظار ربع ساعة. «إعادة دعوة» تمسح كلمة مروره وأجهزته المحفوظة وترسل رابطاً جديداً.
           </p>
         </div>
         <div className="card q">

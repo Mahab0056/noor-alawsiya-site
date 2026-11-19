@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { InviteForm } from '@/components/InviteForm';
 import { Logo } from '@/components/SiteChrome';
 import { getDb } from '@/lib/db';
+import { adminTotpEnabled } from '@/lib/flags';
 import { INVALID_INVITE, THROTTLED } from '@/lib/invite-messages';
 import { viewInvite } from '@/lib/invites';
 import { clientIp } from '@/lib/session';
@@ -39,9 +40,10 @@ async function Invite({ params }: Pick<PageProps<'/admin/invite/[token]'>, 'para
   return (
     <>
       <p className="sub">
-        الدعوة لـ <span className="num">{view.email}</span>. ضع اسمك وكلمة المرور، ثم فعّل التحقق بخطوتين بتطبيق المصادقة على هاتفك.
+        الدعوة لـ <span className="num">{view.email}</span>.{' '}
+        {adminTotpEnabled() ? 'ضع اسمك وكلمة المرور، ثم فعّل التحقق بخطوتين بتطبيق المصادقة على هاتفك.' : 'ضع اسمك وكلمة المرور. بعدها، عند الدخول من جهاز جديد يصلك رمز على هذا البريد.'}
       </p>
-      <InviteForm token={token} />
+      <InviteForm token={token} appCode={adminTotpEnabled()} />
     </>
   );
 }

@@ -70,6 +70,10 @@ export async function destroySession(db: Db, token: string | undefined) {
 const WINDOW = '15 minutes';
 const MAX_PER_IDENTIFIER = 5;
 const MAX_PER_IP = 20;
+// Admins: failures per e-mail from ALL addresses together. The per-address count above is what normally stops a
+// guesser; this ceiling only matters if the client address can be forged or rotated (it bounds a distributed guess
+// at ~400 an hour), and it is high enough that locking an admin out takes a sustained flood. A super admin can unlock.
+const MAX_PER_ADMIN_EMAIL = 100;
 
 /**
  * Atomic check-and-reserve. In one short transaction, take a lock on this identifier and on this address, count the
@@ -84,15 +88,17 @@ export async function reserveAttempt(db: Db, scope: SessionKind, identifier: str
   return db.tx(async (t) => {
     await t.query(`select pg_advisory_xact_lock(1, hashtext($1 || ':' || $2))`, [scope, identifier]);
     await t.query(`select pg_advisory_xact_lock(2, hashtext($1 || ':' || $2))`, [scope, ip]);
-    const [row] = await t.query<{ by_id: string; by_ip: string }>(
+    const [row] = await t.query<{ by_id: string; by_ip: string; by_id_all: string }>(
       // Admins: the per-identifier count only includes failures from this address. Guessing an admin password gets
       // nowhere without the TOTP code, so a global per-email lock would only let a stranger lock the owner out.
-      `select count(*) filter (where identifier = $2${scope === 'admin' ? ' and ip = $3' : ''}) as by_id, count(*) filter (where ip = $3) as by_ip
+      `select count(*) filter (where identifier = $2${scope === 'admin' ? ' and ip = $3' : ''}) as by_id, count(*) filter (where ip = $3) as by_ip,
+              count(*) filter (where identifier = $2) as by_id_all
        from login_attempts
        where scope = $1 and not succeeded and created_at > now() - interval '${WINDOW}' and (identifier = $2 or ip = $3)`,
       [scope, identifier, ip]
     );
-    if (Number(row.by_id) >= MAX_PER_IDENTIFIER || Number(row.by_ip) >= MAX_PER_IP) return { id: 0, throttled: true };
+    const allAddresses = scope === 'admin' && Number(row.by_id_all) >= MAX_PER_ADMIN_EMAIL;
+    if (Number(row.by_id) >= MAX_PER_IDENTIFIER || Number(row.by_ip) >= MAX_PER_IP || allAddresses) return { id: 0, throttled: true };
     const [{ id }] = await t.query<{ id: string }>('insert into login_attempts (scope, identifier, ip, succeeded) values ($1, $2, $3, false) returning id', [scope, identifier, ip]);
     return { id: Number(id), throttled: false };
   });
@@ -171,16 +177,19 @@ export const totpUri = (secret: string, email: string) => `otpauth://totp/${enco
 
 // ---------------------------------------------------------------- secrets at rest (TOTP secret in the admins table)
 
-function appKey() {
+/** A 32-byte key derived from APP_SECRET for one purpose (`info`). Different purposes never share a key. */
+export function deriveKey(info: string) {
   const secret = process.env.APP_SECRET;
   if (!secret) {
     // The fallback key is public. It is only for the local development database, never for a real one.
     if (process.env.NODE_ENV === 'production' || process.env.DATABASE_URL) throw new Error('APP_SECRET is not set.');
-    return hkdfSync('sha256', 'dev-only-secret', '', 'noor-totp', 32);
+    return hkdfSync('sha256', 'dev-only-secret', '', info, 32);
   }
   if (secret.length < 32) throw new Error('APP_SECRET must be at least 32 characters.');
-  return hkdfSync('sha256', secret, '', 'noor-totp', 32);
+  return hkdfSync('sha256', secret, '', info, 32);
 }
+
+const appKey = () => deriveKey('noor-totp');
 
 export function seal(plain: string) {
   const iv = randomBytes(12);

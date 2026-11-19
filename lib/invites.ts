@@ -3,15 +3,18 @@ import { createHash, randomBytes } from 'node:crypto';
 import { audit } from './admin';
 import { hashPassword, matchTotpStep, newTotpSecret, normalizeEmail, seal, totpUri, unseal } from './auth';
 import type { Db } from './db';
+import { forgetAdminDevices } from './email-codes';
+import { adminTotpEnabled } from './flags';
 import { inviteEmail, sendMail, type Fetch, type MailConfig } from './mail';
 
 /**
  * Admin invitations and the super-admin actions on other admins.
  *
- * An invited admin is "pending": no password, no TOTP secret, and loginAdmin() refuses them. The invite link carries a
- * random token (32 bytes); only its sha256 is stored. A token works once, for INVITE_HOURS, and any newer invite for the
- * same admin revokes it. Accepting is two steps on /admin/invite/<token>: set name and password (a TOTP secret is
- * proposed and shown once), then confirm one valid code. Only then is the secret kept and the admin signed in.
+ * An invited admin is "pending" (activated_at null) and loginAdmin() refuses them. The invite link carries a random
+ * token (32 bytes); only its sha256 is stored. A token works once, for INVITE_HOURS, and any newer invite for the same
+ * admin revokes it. Accepting on /admin/invite/<token>: set name and password, and the admin is active and signed in.
+ * With ADMIN_TOTP=1 (lib/flags.ts) there is a second step: a TOTP secret is proposed and shown once, and only one
+ * valid code from the app makes the admin active.
  *
  * Every change is in audit_log by reference only (admin:<id>, invite:<id>): never an address, never a token.
  */
@@ -42,7 +45,7 @@ const TOKEN_RE = /^[A-Za-z0-9_-]{43}$/; // 32 bytes, base64url
 /** The actor must be an active super admin. Checked again here, whatever the caller already checked. */
 async function assertSuperAdmin(db: Db, actorId: number) {
   const [row] = await db.query<{ ok: boolean }>(
-    `select (role = 'super_admin' and totp_confirmed_at is not null and disabled_at is null) as ok from admins where id = $1`,
+    `select (role = 'super_admin' and activated_at is not null and disabled_at is null) as ok from admins where id = $1`,
     [actorId]
   );
   if (!row?.ok) throw new InviteError('not-super', 'Only a super admin can do this.');
@@ -55,7 +58,7 @@ export type InviteDeps = { mail: MailConfig; fetchImpl?: Fetch };
 /**
  * Creates (or re-issues) an invite and sends it. Everything runs in one transaction that includes the send:
  * if Resend refuses, nothing is kept. `actorId` null means the operator command (create-admin --invite).
- * `reset` lets an existing active admin be invited again (lost phone): their password and secret are cleared.
+ * `reset` lets an existing active admin be invited again (forgotten password): their password, secret and remembered devices are cleared.
  */
 export async function inviteAdmin(db: Db, input: { email: string; role: InviteRole; actorId: number | null; reset?: boolean }, deps: InviteDeps) {
   const email = normalizeEmail(input.email);
@@ -64,7 +67,7 @@ export async function inviteAdmin(db: Db, input: { email: string; role: InviteRo
 
   return db.tx(async (t) => {
     const [existing] = await t.query<{ id: string; confirmed: boolean }>(
-      'select id, (totp_confirmed_at is not null) as confirmed from admins where lower(email) = $1 for update',
+      'select id, (activated_at is not null) as confirmed from admins where lower(email) = $1 for update',
       [email]
     );
     let adminId: number;
@@ -90,7 +93,7 @@ export async function resendInvite(db: Db, actorId: number, adminId: number, dep
   if (adminId === actorId) throw new InviteError('self', 'You cannot re-invite yourself.');
   return db.tx(async (t) => {
     const [a] = await t.query<{ email: string; role: AdminRole; confirmed: boolean }>(
-      'select email, role, (totp_confirmed_at is not null) as confirmed from admins where id = $1 for update',
+      'select email, role, (activated_at is not null) as confirmed from admins where id = $1 for update',
       [adminId]
     );
     if (!a) throw new InviteError('not-found', 'No such admin.');
@@ -103,10 +106,11 @@ export async function resendInvite(db: Db, actorId: number, adminId: number, dep
 
 async function resetToPending(t: Db, adminId: number, role: InviteRole) {
   await t.query(
-    `update admins set role = $2, password_hash = null, totp_secret = null, totp_pending_secret = null, totp_confirmed_at = null, totp_last_step = null, disabled_at = null where id = $1`,
+    `update admins set role = $2, password_hash = null, totp_secret = null, totp_pending_secret = null, totp_confirmed_at = null, totp_last_step = null, activated_at = null, disabled_at = null where id = $1`,
     [adminId, role]
   );
   await t.query('delete from sessions where admin_id = $1', [adminId]);
+  await forgetAdminDevices(t, adminId);
 }
 
 async function issue(t: Db, adminId: number, role: InviteRole, actorId: number | null, action: string, email: string, deps: InviteDeps) {
@@ -142,6 +146,7 @@ export async function setAdminDisabled(db: Db, actorId: number, adminId: number,
     if (rows.length === 0) throw new InviteError('not-found', 'No such admin.');
     if (disabled) {
       await t.query('delete from sessions where admin_id = $1', [adminId]);
+      await forgetAdminDevices(t, adminId);
       await t.query('update admin_invites set revoked_at = now() where admin_id = $1 and used_at is null and revoked_at is null', [adminId]);
     }
     await audit(t, actorId, disabled ? 'admin.disable' : 'admin.enable', `admin:${adminId}`);
@@ -169,7 +174,7 @@ export type AdminListRow = {
 
 export async function listAdmins(db: Db): Promise<AdminListRow[]> {
   const rows = await db.query<{ id: string; name: string; email: string; role: AdminRole; confirmed: boolean; disabled: boolean; fails: string; invite_expires_at: Date | null }>(
-    `select a.id, a.name, a.email, a.role, (a.totp_confirmed_at is not null) as confirmed, (a.disabled_at is not null) as disabled,
+    `select a.id, a.name, a.email, a.role, (a.activated_at is not null) as confirmed, (a.disabled_at is not null) as disabled,
             (select count(*) from login_attempts l where l.scope = 'admin' and l.identifier = lower(a.email) and not l.succeeded and l.created_at > now() - interval '${WINDOW}') as fails,
             (select i.expires_at from admin_invites i where i.admin_id = a.id and i.used_at is null and i.revoked_at is null) as invite_expires_at
      from admins a order by a.id`
@@ -192,7 +197,7 @@ async function findInvite(db: Db, token: string): Promise<OpenInvite | null> {
     `select i.id, i.admin_id, a.email, (a.password_hash is not null) as has_password, a.totp_pending_secret
      from admin_invites i join admins a on a.id = i.admin_id
      where i.token_hash = $1 and i.used_at is null and i.revoked_at is null and i.expires_at > now()
-       and a.totp_confirmed_at is null and a.disabled_at is null`,
+       and a.activated_at is null and a.disabled_at is null`,
     [sha256(token)]
   );
   return r ? { inviteId: Number(r.id), adminId: Number(r.admin_id), email: r.email, hasPassword: r.has_password, pendingSecret: r.totp_pending_secret } : null;
@@ -233,13 +238,17 @@ export async function viewInvite(db: Db, token: string, ip: string): Promise<Inv
 }
 
 export type PasswordStep =
-  | { ok: true; secret: string; uri: string }
+  | { ok: true; activated: true; adminId: number }
+  | { ok: true; activated: false; secret: string; uri: string }
   | { ok: false; reason: InviteFailure }
   | { ok: false; reason: 'form'; errors: { name?: string; password?: string } };
 
 /**
- * Step 1: name and password. Proposes a new TOTP secret and returns it to show once. Doing this step again
- * (a reload, a lost QR) proposes a new secret; nothing is final until step 2.
+ * Name and password.
+ * - Default (ADMIN_TOTP off): this is the only step. The link reached the admin's mailbox, which proves the address;
+ *   the invite is used and the admin is active and signed in. Later sign-ins on a new device get a code by e-mail.
+ * - ADMIN_TOTP=1: step 1 of 2. Proposes a new TOTP secret and returns it to show once. Doing this step again
+ *   (a reload, a lost QR) proposes a new secret; nothing is final until step 2.
  */
 export async function setInvitePassword(db: Db, token: string, input: { name: string; password: string; confirm: string }, ip: string): Promise<PasswordStep> {
   const invite = await findInvite(db, token);
@@ -255,11 +264,31 @@ export async function setInvitePassword(db: Db, token: string, input: { name: st
   else if (input.password !== input.confirm) errors.password = 'كلمتا المرور غير متطابقتين.';
   if (errors.name || errors.password) return { ok: false, reason: 'form', errors };
 
+  const passwordHash = await hashPassword(input.password);
+  if (!adminTotpEnabled()) {
+    const done = await db.tx(async (t) => {
+      // Claim the invite: of two submits racing, only one finds it unused.
+      const used = await t.query('update admin_invites set used_at = now() where id = $1 and used_at is null and revoked_at is null and expires_at > now() returning id', [invite.inviteId]);
+      if (used.length !== 1) return false;
+      const rows = await t.query(
+        'update admins set name = $2, password_hash = $3, totp_pending_secret = null, activated_at = now(), last_login_at = now() where id = $1 and activated_at is null and disabled_at is null returning id',
+        [invite.adminId, name, passwordHash]
+      );
+      if (rows.length !== 1) throw new StateChanged(); // rolls the claim back
+      await audit(t, invite.adminId, 'admin.invite.accept', `admin:${invite.adminId}`, { invite: invite.inviteId });
+      return true;
+    }).catch((e) => {
+      if (e instanceof StateChanged) return false;
+      throw e;
+    });
+    return done ? { ok: true, activated: true, adminId: invite.adminId } : { ok: false, reason: 'invalid' };
+  }
+
   const secret = newTotpSecret();
-  await db.query('update admins set name = $2, password_hash = $3, totp_pending_secret = $4 where id = $1 and totp_confirmed_at is null', [
-    invite.adminId, name, await hashPassword(input.password), seal(secret),
+  await db.query('update admins set name = $2, password_hash = $3, totp_pending_secret = $4 where id = $1 and activated_at is null', [
+    invite.adminId, name, passwordHash, seal(secret),
   ]);
-  return { ok: true, secret, uri: totpUri(secret, invite.email) };
+  return { ok: true, activated: false, secret, uri: totpUri(secret, invite.email) };
 }
 
 export type ConfirmStep = { ok: true; adminId: number } | { ok: false; reason: InviteFailure | 'code' | 'no-secret' };
@@ -273,7 +302,7 @@ export async function confirmInviteTotp(db: Db, token: string, code: string, ip:
   const attempt = await reserve(db, ip, invite?.inviteId ?? null);
   if (attempt.throttled) return { ok: false, reason: 'throttled' };
   if (!invite) return { ok: false, reason: 'invalid' };
-  if (!invite.hasPassword || !invite.pendingSecret) {
+  if (!adminTotpEnabled() || !invite.hasPassword || !invite.pendingSecret) {
     await succeeded(db, attempt.id);
     return { ok: false, reason: 'no-secret' };
   }
@@ -286,8 +315,8 @@ export async function confirmInviteTotp(db: Db, token: string, code: string, ip:
     const used = await t.query('update admin_invites set used_at = now() where id = $1 and used_at is null and revoked_at is null and expires_at > now() returning id', [invite.inviteId]);
     if (used.length !== 1) return false;
     const rows = await t.query(
-      `update admins set totp_secret = totp_pending_secret, totp_pending_secret = null, totp_confirmed_at = now(), totp_last_step = $2, last_login_at = now()
-       where id = $1 and totp_confirmed_at is null and totp_pending_secret = $3 and password_hash is not null returning id`,
+      `update admins set totp_secret = totp_pending_secret, totp_pending_secret = null, totp_confirmed_at = now(), activated_at = now(), totp_last_step = $2, last_login_at = now()
+       where id = $1 and activated_at is null and totp_pending_secret = $3 and password_hash is not null returning id`,
       [invite.adminId, step, invite.pendingSecret]
     );
     if (rows.length !== 1) throw new StateChanged(); // rolls the claim back

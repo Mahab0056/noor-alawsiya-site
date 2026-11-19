@@ -25,7 +25,7 @@ function explain(e: unknown): string {
   if (e instanceof InviteError) {
     switch (e.code) {
       case 'bad-email': return 'البريد الإلكتروني غير صحيح.';
-      case 'already-active': return 'هذا المشرف مفعّل. لإعادة ضبطه (هاتف ضائع) اختر «إعادة دعوة» من القائمة.';
+      case 'already-active': return 'هذا المشرف مفعّل. لإعادة ضبطه (كلمة مرور منسية) اختر «إعادة دعوة» من القائمة.';
       case 'not-pending': return 'هذا المشرف مفعّل.';
       case 'self': return 'لا يمكنك تطبيق هذا على حسابك.';
       case 'not-super': return 'هذا للمدير الأعلى فقط.';

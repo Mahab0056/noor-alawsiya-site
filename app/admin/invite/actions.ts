@@ -28,6 +28,11 @@ export async function inviteAction(prev: InviteState, form: FormData): Promise<I
 
 async function passwordStep(form: FormData): Promise<InviteState> {
   const r = await setInvitePassword(await getDb(), text(form, 'token'), { name: text(form, 'name'), password: text(form, 'password'), confirm: text(form, 'confirm') }, await clientIp());
+  if (r.ok && r.activated) {
+    // ADMIN_TOTP off: the invite was the e-mail check; the admin is active now.
+    await startSession('admin', r.adminId);
+    redirect('/admin');
+  }
   if (r.ok) return { step: 'totp', qr: qrDataUrl(r.uri), secret: r.secret };
   if (r.reason === 'form') return { step: 'password', errors: r.errors, error: 'راجع الحقول المعلَّمة.' };
   return { step: 'dead', error: r.reason === 'throttled' ? THROTTLED : INVALID_INVITE };
