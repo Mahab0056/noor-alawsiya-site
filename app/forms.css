@@ -65,13 +65,13 @@ fieldset.q > legend + * { clear: both; }
 .qrow { display: flex; gap: 10px; align-items: center; padding: 12px 22px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
 .qrow:last-child { border-bottom: 0; }
 .qrow .sp { margin-inline-start: auto; display: flex; gap: 6px; align-items: center; flex: none; }
-.qrow.off b { color: var(--mute); font-weight: 500; }
+.qrow.off b { color: var(--mute); font-weight: 400; }
 .qrow form { display: flex; gap: 6px; }
 .qrow > div:not(.sp) { min-width: 0; }
 
 .req, .qh em { font-style: normal; color: var(--bad); }
 .qh { font-size: 16px; font-weight: 700; margin-bottom: 8px; display: flex; gap: 8px; }
-.qh .qn, .qrow .qn { color: var(--mute); font-weight: 500; }
+.qh .qn, .qrow .qn { color: var(--mute); font-weight: 400; }
 .q .field:last-child { margin-bottom: 0; }
 .q > label.opt { margin-top: 4px; }
 .reg-top a.sp { text-decoration: underline; text-underline-offset: 3px; }

@@ -5,8 +5,12 @@ import './site.css';
 import './portal.css';
 import './forms.css';
 
-const ui = IBM_Plex_Sans_Arabic({ variable: '--font-ui', subsets: ['arabic', 'latin'], weight: ['400', '500', '600', '700'] });
-const quran = Amiri({ variable: '--font-quran', subsets: ['arabic'], weight: ['400', '700'] });
+// Mobile speed: preload only what the first screen draws. `subsets` only picks which files are preloaded;
+// the latin files are still in the @font-face rules, so Latin text keeps this font (loaded when the page needs it).
+// Weight 500 is dropped: its 4 uses (nav, logo subtitle, 2 admin labels) now use 400. Amiri draws only the ayah far down the
+// home page, in 700, so it is not preloaded and its unused 400 is gone.
+const ui = IBM_Plex_Sans_Arabic({ variable: '--font-ui', subsets: ['arabic'], weight: ['400', '600', '700'] });
+const quran = Amiri({ variable: '--font-quran', subsets: ['arabic'], weight: ['700'], preload: false });
 const brand = Aref_Ruqaa({ variable: '--font-brand', subsets: ['arabic'], weight: ['700'] });
 
 export const metadata: Metadata = {

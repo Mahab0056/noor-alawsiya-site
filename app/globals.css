@@ -60,8 +60,8 @@ svg.i.l { width: 26px; height: 26px; }
 .nav .wrap { display: flex; align-items: center; gap: 30px; height: 74px; }
 .logo { display: flex; align-items: center; gap: 10px; font: 700 23px var(--brand); }
 .logo img { height: 48px; }
-.logo small { display: block; font: 500 11.5px var(--ui); color: #3c3c1a; margin-top: -4px; }
-.nav nav { display: flex; gap: 6px; margin-inline-start: auto; font-weight: 500; font-size: 15px; }
+.logo small { display: block; font: 400 11.5px var(--ui); color: #3c3c1a; margin-top: -4px; }
+.nav nav { display: flex; gap: 6px; margin-inline-start: auto; font-weight: 400; font-size: 15px; }
 .nav nav a { padding: 8px 14px; border-radius: 10px; }
 .nav nav a.on { background: var(--k); color: var(--y); }
 .nav .acts { display: flex; gap: 10px; }
