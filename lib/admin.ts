@@ -8,7 +8,8 @@ import { MAX_TEXT, type QuestionKind, type RegistrationStatus, type ShowIf } fro
  * Every change is written to audit_log by reference only, never with student names or phones.
  */
 
-async function audit(db: Db, adminId: number, action: string, target: string, detail?: Record<string, unknown>) {
+/** adminId null = the operator command (scripts/create-admin.ts), not a signed-in admin. */
+export async function audit(db: Db, adminId: number | null, action: string, target: string, detail?: Record<string, unknown>) {
   await db.query('insert into audit_log (admin_id, action, target, detail) values ($1, $2, $3, $4)', [adminId, action, target, detail ? JSON.stringify(detail) : null]);
 }
 

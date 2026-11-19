@@ -31,7 +31,15 @@ async function course(name = 'دورة تجريبية') {
 
 test('migrations apply cleanly and are recorded', async () => {
   const rows = await db.query<{ name: string }>('select name from schema_migrations order by name');
-  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql']);
+  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql', '0004_guardian_not_blank.sql', '0005_admin_invites.sql', '0006_admin_email_codes.sql']);
+});
+
+test('guardian name and phone cannot be blank strings', async () => {
+  const year = new Date().getFullYear();
+  await rejects(
+    db.query(`insert into students (full_name, birth_year, phone, password_hash, guardian_name, guardian_phone, guardian_consent_at) values ('قاصر فارغ', $1, '07700000077', 'x', '', '', now())`, [year - 12]),
+    /guardian_not_blank/
+  );
 });
 
 test('a minor cannot be stored without guardian name, phone and consent', async () => {

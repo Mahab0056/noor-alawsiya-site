@@ -1,8 +1,11 @@
 'use server';
 
 import { refresh } from 'next/cache';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { loginAdmin } from '@/lib/accounts';
+import { ADMIN_CODE_COOKIE, ADMIN_DEVICE_COOKIE } from '@/lib/cookie-names';
+import { CODE_MINUTES, rememberDevice, verifyLoginCode } from '@/lib/email-codes';
 import { addQuestion, moveQuestion, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
 import { getDb } from '@/lib/db';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
@@ -22,16 +25,46 @@ const id = (form: FormData) => {
 const STATUSES: RegistrationStatus[] = ['pending', 'accepted', 'rejected'];
 const KINDS: QuestionKind[] = ['single', 'multi', 'yes_no', 'text'];
 
-export type AdminLoginState = { error: string } | undefined;
+export type AdminLoginState = { step?: 'password'; error: string } | { step: 'code'; error?: string } | undefined;
 
-export async function adminLoginAction(_prev: AdminLoginState, form: FormData): Promise<AdminLoginState> {
-  const result = await loginAdmin(await getDb(), text(form, 'email'), text(form, 'password'), text(form, 'code').trim(), await clientIp());
+const THROTTLED = 'محاولات كثيرة. انتظر ربع ساعة ثم حاول مرة أخرى.';
+const secureCookie = () => process.env.NODE_ENV === 'production';
+
+/** Step 1: e-mail and password (and the app code if ADMIN_TOTP=1). Step 2 (`step=code`): the code sent by e-mail. */
+export async function adminLoginAction(prev: AdminLoginState, form: FormData): Promise<AdminLoginState> {
+  if (text(form, 'step') === 'code') return codeStep(form);
+  const store = await cookies();
+  const result = await loginAdmin(await getDb(), text(form, 'email'), text(form, 'password'), text(form, 'code').trim(), await clientIp(), {
+    deviceToken: store.get(ADMIN_DEVICE_COOKIE)?.value,
+  });
   if (result.ok) {
     await startSession('admin', result.adminId);
     redirect('/admin');
   }
-  if (result.reason === 'throttled') return { error: 'محاولات كثيرة. انتظر ربع ساعة ثم حاول مرة أخرى.' };
-  return { error: 'بيانات الدخول أو رمز التحقق غير صحيح.' };
+  if (result.reason === 'code-sent') {
+    store.set(ADMIN_CODE_COOKIE, result.challenge, { httpOnly: true, secure: secureCookie(), sameSite: 'strict', path: '/admin', maxAge: CODE_MINUTES * 60 });
+    return { step: 'code' };
+  }
+  if (result.reason === 'throttled') return { error: THROTTLED };
+  if (result.reason === 'mail-failed') return { error: 'تعذّر إرسال رمز الدخول بالبريد الآن. حاول بعد قليل.' };
+  return { error: 'بيانات الدخول غير صحيحة.' };
+}
+
+async function codeStep(form: FormData): Promise<AdminLoginState> {
+  const store = await cookies();
+  const result = await verifyLoginCode(await getDb(), store.get(ADMIN_CODE_COOKIE)?.value, text(form, 'code'));
+  if (!result.ok) {
+    if (result.reason === 'code') return { step: 'code', error: `الرمز غير صحيح. بقيت ${result.triesLeft} محاولات لهذا الرمز.` };
+    store.delete({ name: ADMIN_CODE_COOKIE, path: '/admin' });
+    return { error: 'انتهت صلاحية الرمز أو كثرت المحاولات. ادخل بكلمة المرور من جديد ليصلك رمز جديد.' };
+  }
+  store.delete({ name: ADMIN_CODE_COOKIE, path: '/admin' });
+  if (form.get('remember') === 'on') {
+    const device = await rememberDevice(await getDb(), result.adminId);
+    if (device) store.set(ADMIN_DEVICE_COOKIE, device.token, { httpOnly: true, secure: secureCookie(), sameSite: 'lax', path: '/admin', expires: device.expiresAt });
+  }
+  await startSession('admin', result.adminId);
+  redirect('/admin');
 }
 
 export async function adminLogoutAction() {

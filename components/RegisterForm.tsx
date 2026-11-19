@@ -340,12 +340,14 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
               </button>
             ) : null}
             {step < 2 ? (
-              <button type="button" className="btn k" onClick={next}>
+              // Separate keys: without them React reuses one <button> and turns it into type="submit" during the
+              // click on step 2, so the browser sent the form before the review step.
+              <button key="next" type="button" className="btn k" onClick={next}>
                 التالي: {STEPS[step + 1].title}
                 <Icon name="chev" size="s" />
               </button>
             ) : (
-              <button type="submit" className="btn k" disabled={pending}>
+              <button key="submit" type="submit" className="btn k" disabled={pending}>
                 {pending ? 'جارٍ الإرسال…' : 'إرسال الطلب'}
               </button>
             )}
