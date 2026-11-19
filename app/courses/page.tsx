@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { NotStated, TeacherGrid } from '@/components/Cards';
+import { JsonLd } from '@/components/JsonLd';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
+import { COURSES_LD } from '@/lib/seo';
 import { ar, countOf, COURSES, DONE_COURSES, OPEN_COURSES, TEACHERS, type CourseStatus } from '@/lib/data';
 
 export const metadata: Metadata = {
@@ -29,6 +31,7 @@ export default function CoursesPage() {
   ];
   return (
     <>
+      <JsonLd data={COURSES_LD} />
       <SiteHeader current="courses" />
       <main id="main">
         <section className="phead">

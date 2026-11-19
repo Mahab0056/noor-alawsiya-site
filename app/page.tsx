@@ -2,9 +2,11 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CourseCard, TeacherGrid } from '@/components/Cards';
 import { Icon } from '@/components/Icon';
+import { JsonLd } from '@/components/JsonLd';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { ar, CONTACT, countOf, COURSES, DONE_COURSES, HOME_COURSES, MAHFAL_COURSES, OPEN_COURSES, TEACHERS } from '@/lib/data';
 import type { IconName } from '@/lib/icons';
+import { SCHOOL_LD } from '@/lib/seo';
 
 const STATS: { icon: IconName; value: number; label: string }[] = [
   { icon: 'book', value: COURSES.length, label: 'دورة منذ ٢٠٢١' },
@@ -32,6 +34,7 @@ const TIMELINE: [string, string][] = [
 export default function Home() {
   return (
     <>
+      <JsonLd data={SCHOOL_LD} />
       <SiteHeader current="home" />
       <main id="main">
         <section className="hero">

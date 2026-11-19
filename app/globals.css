@@ -130,7 +130,7 @@ svg.i.l { width: 26px; height: 26px; }
 .cta .sp { margin-inline-start: auto; display: flex; gap: 10px; }
 .foot { background: var(--k); color: #bdbdbd; font-size: 14px; padding: 54px 0 26px; margin-top: 84px; }
 .foot .cols { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 34px; }
-.foot h3 { color: #fff; font-size: 15px; margin-bottom: 12px; }
+.foot h2 { color: #fff; font-size: 15px; margin-bottom: 12px; }
 .foot a { display: block; padding: 3px 0; }
 .foot .logo { color: var(--y); margin-bottom: 12px; }
 .foot .end { border-top: 1px solid #2a2a2c; margin-top: 34px; padding-top: 18px; display: flex; gap: 16px; font-size: 13px; }

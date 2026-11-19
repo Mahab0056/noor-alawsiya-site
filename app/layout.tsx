@@ -13,8 +13,18 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://noor-alawsiya.com'),
   title: { default: 'مدرسة نور الأوصياء للدراسات القرآنية | بغداد', template: '%s | مدرسة نور الأوصياء' },
   description: 'مدرسة نور الأوصياء للدراسات القرآنية في بغداد: دورات أحكام التلاوة والتجويد، القراءة التحقيقية والإجازة، والنغم القرآني.',
-  icons: { icon: '/img/mark-black.png' },
-  openGraph: { type: 'website', locale: 'ar_IQ', siteName: 'مدرسة نور الأوصياء للدراسات القرآنية' },
+  alternates: { canonical: './' },
+  icons: {
+    icon: [{ url: '/favicon.ico', sizes: '48x48' }, { url: '/img/icon-192.png', sizes: '192x192', type: 'image/png' }],
+    apple: '/img/apple-touch-icon.png',
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'ar_IQ',
+    siteName: 'مدرسة نور الأوصياء للدراسات القرآنية',
+    images: [{ url: '/img/og.png', width: 1200, height: 630, alt: 'مدرسة نور الأوصياء للدراسات القرآنية، بغداد' }],
+  },
+  twitter: { card: 'summary_large_image', images: ['/img/og.png'] },
 };
 
 export const viewport: Viewport = { themeColor: '#fffa00' };

@@ -29,7 +29,7 @@ export function SiteHeader({ current }: { current?: NavKey }) {
       <a className="skip" href="#main">
         تخطَّ إلى المحتوى
       </a>
-      <aside className="strip" aria-label="معلومات سريعة عن المدرسة">
+      <div className="strip">
         <div className="wrap">
           <span>
             <Icon name="pin" size="s" />
@@ -43,7 +43,7 @@ export function SiteHeader({ current }: { current?: NavKey }) {
           </a>
           <span className="sp">التسجيل مفتوح للدورات الحالية</span>
         </div>
-      </aside>
+      </div>
       <header className="nav">
         <div className="wrap">
           <Logo />
@@ -77,7 +77,7 @@ export function SiteFooter() {
             <p>مدرسة مستقلة غير تابعة لأي جهة، تهدف إلى نشر علوم القرآن وأهل البيت عليهم السلام.</p>
           </div>
           <div>
-            <h3>المدرسة</h3>
+            <h2>المدرسة</h2>
             <Link href="/">الرئيسية</Link>
             <Link href="/courses">الدورات والأساتذة</Link>
             <Link href="/register">التسجيل</Link>
@@ -85,7 +85,7 @@ export function SiteFooter() {
             <Link href="/privacy">سياسة الخصوصية</Link>
           </div>
           <div>
-            <h3>تابعنا</h3>
+            <h2>تابعنا</h2>
             <a href={CONTACT.youtube} {...EXT}>
               يوتيوب
             </a>
@@ -97,7 +97,7 @@ export function SiteFooter() {
             </a>
           </div>
           <div>
-            <h3>تواصل</h3>
+            <h2>تواصل</h2>
             <a className="num" href={CONTACT.phoneHref}>
               {CONTACT.phone}
             </a>
