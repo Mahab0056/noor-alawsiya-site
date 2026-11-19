@@ -6,7 +6,7 @@ import { ar } from '@/lib/data';
 import { Icon } from './Icon';
 import { Logo } from './SiteChrome';
 
-type Key = 'requests' | 'form';
+type Key = 'requests' | 'form' | 'admins';
 
 /** Side navigation and top bar around every admin screen. Lists only the screens that exist. */
 export function AdminShell({ admin, current, pending, children }: { admin: AdminProfile; current: Key; pending: number; children: ReactNode }) {
@@ -21,6 +21,12 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
         <Icon name="list" />
         استبيان التسجيل
       </Link>
+      {admin.role === 'super_admin' ? (
+        <Link href="/admin/admins" className={current === 'admins' ? 'on' : undefined} aria-current={current === 'admins' ? 'page' : undefined}>
+          <Icon name="users" />
+          المشرفون
+        </Link>
+      ) : null}
     </>
   );
   return (
