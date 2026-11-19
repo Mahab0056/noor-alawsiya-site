@@ -103,8 +103,7 @@ fieldset.q > legend + * { clear: both; }
 /* وصولية: الشبكة لا تتسع بمحتوى خلاياها (كان /admin/admins يفيض عن عرض الهاتف)، والأزرار الصغيرة تُمدَّد على الهاتف لتبلغ ٤٤ بكسل */
 .tacts .btn { white-space: normal; text-align: center; }
 @media (max-width: 900px) {
-  .btn.sm, .nav nav a, .mnav a, .reg-top a.sp, .auth .alt a { min-height: 44px; display: inline-flex; align-items: center; }
-  .nav nav a { justify-content: center; }
+  .btn.sm, .reg-top a.sp, .auth .alt a { min-height: 44px; display: inline-flex; align-items: center; }
   .foot a { padding-block: 10px; }
   .mtop .logo { min-height: 44px; }
 }
