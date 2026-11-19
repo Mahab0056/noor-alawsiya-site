@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { loginAdmin } from '@/lib/accounts';
 import { ADMIN_CODE_COOKIE, ADMIN_DEVICE_COOKIE } from '@/lib/cookie-names';
 import { CODE_MINUTES, rememberDevice, verifyLoginCode } from '@/lib/email-codes';
-import { addQuestion, moveQuestion, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
+import { addQuestion, moveQuestion, recordNotified, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
 import { getDb } from '@/lib/db';
 import { triesLeftText } from '@/lib/format';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
@@ -85,7 +85,14 @@ export async function reviewAction(form: FormData) {
   redirect(`/admin?status=${from}`);
 }
 
-export type QuestionState = { error?: string; saved: number } | undefined;
+/** «إبلاغ عبر واتساب» was pressed: the browser opens wa.me itself; this only writes the audit line (id, no phone). */
+export async function notifiedAction(requestId: unknown) {
+  const admin = await requireAdmin();
+  if (typeof requestId !== 'number' || !Number.isSafeInteger(requestId) || requestId <= 0) return;
+  if (await recordNotified(await getDb(), admin.id, requestId)) refresh();
+}
+
+export type QuestionState ={ error?: string; saved: number } | undefined;
 
 export async function addQuestionAction(prev: QuestionState, form: FormData): Promise<QuestionState> {
   const admin = await requireAdmin();
