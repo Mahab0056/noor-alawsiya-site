@@ -46,7 +46,7 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
         </div>
       </aside>
       <div className="main">
-        <div className="top">
+        <header className="top">
           <div className="mtop">
             <Logo sub="لوحة الإدارة" />
           </div>
@@ -55,7 +55,7 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
               تسجيل الخروج
             </button>
           </form>
-        </div>
+        </header>
         <nav className="mnav" aria-label="أقسام لوحة الإدارة">
           {links}
         </nav>

@@ -40,7 +40,7 @@ async function Invite({ params }: Pick<PageProps<'/admin/invite/[token]'>, 'para
   return (
     <>
       <p className="sub">
-        الدعوة لـ <span className="num">{view.email}</span>.{' '}
+        الدعوة موجّهة إلى <span className="num">{view.email}</span>.{' '}
         {adminTotpEnabled() ? 'ضع اسمك وكلمة المرور، ثم فعّل التحقق بخطوتين بتطبيق المصادقة على هاتفك.' : 'ضع اسمك وكلمة المرور. بعدها، عند الدخول من جهاز جديد يصلك رمز على هذا البريد.'}
       </p>
       <InviteForm token={token} appCode={adminTotpEnabled()} />

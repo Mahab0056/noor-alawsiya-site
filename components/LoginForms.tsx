@@ -25,10 +25,13 @@ export function LoginForm() {
         <input {...fieldProps('password', { required: true, ltr: true })} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={200} />
       </Field>
       {state?.names ? (
+        <p className="vh" role="status">
+          أكثر من طالب مسجّل بهذا الرقم. اختر الاسم من القائمة ثم اضغط «دخول».
+        </p>
+      ) : null}
+      {state?.names ? (
         <fieldset className="field">
-          <legend className="lbl" role="status">
-            أكثر من طالب مسجّل بهذا الرقم. اختر الاسم ثم اضغط «دخول»:
-          </legend>
+          <legend className="lbl">أكثر من طالب مسجّل بهذا الرقم. اختر الاسم ثم اضغط «دخول»:</legend>
           <div className="opts">
             {state.names.map((name, i) => (
               <label className="opt" key={name}>
@@ -65,11 +68,11 @@ export function AdminLoginForm({ appCode = false }: { appCode?: boolean }) {
           </p>
         )}
         <Field id="code" label="رمز الدخول" hint="ستة أرقام من رسالة البريد">
-          <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={11} autoFocus />
+          <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={11} spellCheck={false} autoFocus />
         </Field>
         <label className="opt" style={{ marginBottom: 16 }}>
           <input type="checkbox" name="remember" />
-          تذكّر هذا الجهاز ٣٠ يوماً (لا تختره على جهاز مشترك)
+          تذكّر هذا الجهاز ٣٠ يوماً (لا تختر هذا الخيار على جهاز مشترك)
         </label>
         <button className="btn k" type="submit" disabled={pending}>
           {pending ? 'جارٍ التحقق…' : 'تأكيد الدخول'}

@@ -8,6 +8,7 @@ import { ADMIN_CODE_COOKIE, ADMIN_DEVICE_COOKIE } from '@/lib/cookie-names';
 import { CODE_MINUTES, rememberDevice, verifyLoginCode } from '@/lib/email-codes';
 import { addQuestion, moveQuestion, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
 import { getDb } from '@/lib/db';
+import { triesLeftText } from '@/lib/format';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
 import { clientIp, endSession, requireAdmin, startSession } from '@/lib/session';
 
@@ -54,7 +55,7 @@ async function codeStep(form: FormData): Promise<AdminLoginState> {
   const store = await cookies();
   const result = await verifyLoginCode(await getDb(), store.get(ADMIN_CODE_COOKIE)?.value, text(form, 'code'));
   if (!result.ok) {
-    if (result.reason === 'code') return { step: 'code', error: `الرمز غير صحيح. بقيت ${result.triesLeft} محاولات لهذا الرمز.` };
+    if (result.reason === 'code') return { step: 'code', error: `الرمز غير صحيح. ${triesLeftText(result.triesLeft)} لهذا الرمز.` };
     store.delete({ name: ADMIN_CODE_COOKIE, path: '/admin' });
     return { error: 'انتهت صلاحية الرمز أو كثرت المحاولات. ادخل بكلمة المرور من جديد ليصلك رمز جديد.' };
   }

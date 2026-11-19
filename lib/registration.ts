@@ -89,7 +89,7 @@ export function validateStudent(input: RegistrationInput, now = new Date()) {
   const phone = normalizePhone(input.phone);
   if (!phone) errors.phone = 'اكتب رقم هاتف عراقياً صحيحاً، مثل 07701234567.';
 
-  if (input.password.length < MIN_PASSWORD) errors.password = 'كلمة المرور ٨ خانات على الأقل.';
+  if (input.password.length < MIN_PASSWORD) errors.password = 'كلمة المرور ٨ أحرف على الأقل.';
   else if (input.password.length > 200) errors.password = 'كلمة المرور طويلة جداً.';
 
   const minor = !errors.birthYear && isMinor(birthYear, now);

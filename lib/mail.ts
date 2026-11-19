@@ -1,5 +1,6 @@
 import 'server-only';
 import { adminTotpEnabled } from './flags';
+import { hoursText, minutesText } from './format';
 
 /**
  * Outgoing e-mail through Resend's HTTP API (plain fetch, no SDK).
@@ -64,7 +65,7 @@ export function inviteEmail(link: string, role: 'super_admin' | 'admin', hours: 
     '',
     link,
     '',
-    `الرابط يصلح مرة واحدة ولمدة ${hours} ساعة. إن لم تكن تنتظر هذه الدعوة فتجاهل هذه الرسالة.`,
+    `الرابط يصلح مرة واحدة ولمدة ${hoursText(hours)}. إن لم تكن تنتظر هذه الدعوة فتجاهل هذه الرسالة.`,
     '',
     'نور الأوصياء',
   ].join('\n');
@@ -77,7 +78,7 @@ export function inviteEmail(link: string, role: 'super_admin' | 'admin', hours: 
 <p style="margin:0 0 12px;line-height:1.8">دُعيت لتكون ${roleText} في لوحة إدارة موقع مدرسة <b>نور الأوصياء</b> للدراسات القرآنية.</p>
 <p style="margin:0 0 20px;line-height:1.8">اضغط الزر ${what}.</p>
 <p style="margin:0 0 20px"><a href="${a}" style="display:inline-block;background:#FFFA00;color:#111;text-decoration:none;font-weight:bold;padding:12px 22px;border-radius:10px;border:1px solid #111">قبول الدعوة</a></p>
-<p style="margin:0 0 8px;font-size:13px;color:#555;line-height:1.8">الرابط يصلح مرة واحدة ولمدة ${hours} ساعة. إن لم تكن تنتظر هذه الدعوة فتجاهل هذه الرسالة.</p>
+<p style="margin:0 0 8px;font-size:13px;color:#555;line-height:1.8">الرابط يصلح مرة واحدة ولمدة ${hoursText(hours)}. إن لم تكن تنتظر هذه الدعوة فتجاهل هذه الرسالة.</p>
 <p dir="ltr" style="margin:0;font-size:12px;color:#777;word-break:break-all;text-align:left">${a}</p>
 </div></body></html>`;
   return { subject: INVITE_SUBJECT, text, html };
@@ -94,8 +95,8 @@ export function loginCodeEmail(code: string, minutes: number) {
     '',
     code,
     '',
-    `يصلح مرة واحدة ولمدة ${minutes} دقائق. لا تعطه لأحد.`,
-    'إن لم تكن أنت من يحاول الدخول الآن فكلمة مرورك معروفة لغيرك: غيّرها، وأخبر المدير الأعلى.',
+    `يصلح مرة واحدة ولمدة ${minutesText(minutes)}. لا تعطه لأحد.`,
+    'إن لم تكن أنت من يحاول الدخول الآن فقد يكون أحدٌ يعرف كلمة مرورك. أخبر المدير الأعلى ليعيد دعوتك بكلمة مرور جديدة.',
     '',
     'نور الأوصياء',
   ].join('\n');
@@ -106,8 +107,8 @@ export function loginCodeEmail(code: string, minutes: number) {
 <p style="margin:0 0 12px">السلام عليكم،</p>
 <p style="margin:0 0 12px;line-height:1.8">رمز الدخول إلى لوحة إدارة <b>نور الأوصياء</b>:</p>
 <p dir="ltr" style="margin:0 0 20px;font-size:32px;font-weight:bold;letter-spacing:8px;text-align:center;font-family:Consolas,monospace">${escapeHtml(code)}</p>
-<p style="margin:0 0 8px;font-size:13px;color:#555;line-height:1.8">يصلح مرة واحدة ولمدة ${minutes} دقائق. لا تعطه لأحد.</p>
-<p style="margin:0;font-size:13px;color:#555;line-height:1.8">إن لم تكن أنت من يحاول الدخول الآن فكلمة مرورك معروفة لغيرك: غيّرها، وأخبر المدير الأعلى.</p>
+<p style="margin:0 0 8px;font-size:13px;color:#555;line-height:1.8">يصلح مرة واحدة ولمدة ${minutesText(minutes)}. لا تعطه لأحد.</p>
+<p style="margin:0;font-size:13px;color:#555;line-height:1.8">إن لم تكن أنت من يحاول الدخول الآن فقد يكون أحدٌ يعرف كلمة مرورك. أخبر المدير الأعلى ليعيد دعوتك بكلمة مرور جديدة.</p>
 </div></body></html>`;
   return { subject: LOGIN_CODE_SUBJECT, text, html };
 }
