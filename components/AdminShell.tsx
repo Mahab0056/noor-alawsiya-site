@@ -42,7 +42,7 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
           <div>
             <b>{admin.name}</b>
             <br />
-            <span>{adminTotpEnabled() ? 'تحقق بخطوتين مفعّل' : 'الدخول برمز البريد على الأجهزة الجديدة'}</span>
+            <span>{adminTotpEnabled() ? 'تحقق بخطوتين مفعّل' : 'الدخول برمز البريد'}</span>
           </div>
         </div>
       </aside>

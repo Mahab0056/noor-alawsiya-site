@@ -117,3 +117,6 @@ fieldset.q > legend + * { clear: both; }
   table.st.team td:nth-child(n) { grid-area: auto; justify-self: stretch; }
   .foot .end a { padding-block: 10px; display: inline-block; }
 }
+
+/* The step heading takes focus by script so screen readers announce the new step; a ring around it only looks broken. */
+.reg-main h2[tabindex='-1']:focus { outline: none; }
