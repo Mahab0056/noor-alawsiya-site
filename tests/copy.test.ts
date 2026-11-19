@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { hoursText, minutesText, triesLeftText } from '../lib/format';
-import { inviteEmail, loginCodeEmail } from '../lib/mail';
+import { DEFAULT_MAIL_FROM, inviteEmail, loginCodeEmail, mailConfig } from '../lib/mail';
 
 test('counted nouns agree with the number and use Arabic-Indic digits', () => {
   assert.equal(minutesText(10), '١٠ دقائق');
@@ -24,4 +24,10 @@ test('both e-mails say how long they last in Arabic digits, in the text and the 
   const invite = inviteEmail('https://example.test/admin/invite/x', 'admin', 48);
   assert.match(invite.text, /ولمدة ٤٨ ساعة/);
   assert.match(invite.html, /ولمدة ٤٨ ساعة/);
+});
+
+test('the default sender is the school by its Arabic name on the verified domain (decisions 44/45)', () => {
+  assert.equal(DEFAULT_MAIL_FROM, 'نور الأوصياء <noreply@mail.noor-alawsiya.com>');
+  const cfg = mailConfig({ RESEND_API_KEY: 're_test_12345678', APP_ORIGIN: 'https://noor-alawsiya.com' });
+  assert.equal(cfg.from, DEFAULT_MAIL_FROM);
 });

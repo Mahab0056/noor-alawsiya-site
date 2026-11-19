@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useActionState, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { registerAction, type RegisterState } from '@/app/actions';
 import { isMinorIn, MAX_NAME, MIN_PASSWORD, NO, normalizePhone, toYear, visibleQuestions, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse } from '@/lib/form-rules';
 import { Field, fieldProps } from './Field';
@@ -108,6 +108,16 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
     }
   }
 
+  // Steps 1-2 have no submit button, so the browser never submits on Enter: move to the next step here instead.
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== 'Enter' || step >= 2 || event.nativeEvent.isComposing) return;
+    const t = event.target;
+    if (t instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit'].includes(t.type)) {
+      event.preventDefault();
+      next();
+    }
+  }
+
   function onSubmit(event: FormEvent) {
     if (step < 2) {
       event.preventDefault(); // Enter in a field moves to the next step instead of sending early
@@ -167,7 +177,7 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
           </p>
         ) : null}
 
-        <form action={formAction} onSubmit={onSubmit} noValidate>
+        <form action={formAction} onSubmit={onSubmit} onKeyDown={onKeyDown} noValidate>
           <div hidden={step !== 0}>
             <div className="card q">
               <Field id="courseId" label="الدورة" error={errors.courseId} required>

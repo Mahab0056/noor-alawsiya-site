@@ -15,7 +15,8 @@ import { hoursText, minutesText } from './format';
  */
 
 export const RESEND_ENDPOINT = 'https://api.resend.com/emails';
-export const DEFAULT_MAIL_FROM = 'Noor Al-Awsiya <noreply@mail.noor-alawsiya.com>';
+// Display name as decided by Mahab (decisions 44/45, 19/11/2026). Railway EMAIL_FROM, when set, wins.
+export const DEFAULT_MAIL_FROM = 'نور الأوصياء <noreply@mail.noor-alawsiya.com>';
 
 export type MailConfig = { apiKey: string; from: string; origin: string };
 export type Fetch = (url: string, init: RequestInit) => Promise<Response>;

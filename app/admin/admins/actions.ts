@@ -21,7 +21,7 @@ const targetId = (form: FormData) => {
 export type TeamState = { error?: string; ok?: string } | undefined;
 
 function explain(e: unknown): string {
-  if (e instanceof MailConfigError) return 'إرسال البريد غير مهيأ على الخادم بعد (RESEND_API_KEY أو APP_ORIGIN). لم يُنشأ شيء.';
+  if (e instanceof MailConfigError) return 'إرسال البريد غير مهيأ على الخادم بعد، فلم يُنشأ شيء. أخبر مشغّل الموقع.';
   if (e instanceof InviteError) {
     switch (e.code) {
       case 'bad-email': return 'البريد الإلكتروني غير صحيح.';

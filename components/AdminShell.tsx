@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { adminLogoutAction } from '@/app/admin/actions';
 import type { AdminProfile } from '@/lib/accounts';
 import { ar } from '@/lib/data';
+import { adminTotpEnabled } from '@/lib/flags';
 import { Icon } from './Icon';
 import { Logo } from './SiteChrome';
 
@@ -41,7 +42,7 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
           <div>
             <b>{admin.name}</b>
             <br />
-            <span>تحقق بخطوتين مفعّل</span>
+            <span>{adminTotpEnabled() ? 'تحقق بخطوتين مفعّل' : 'الدخول برمز البريد على الأجهزة الجديدة'}</span>
           </div>
         </div>
       </aside>

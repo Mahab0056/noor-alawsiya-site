@@ -1,6 +1,7 @@
 /**
  * Applies pending migrations. Run it before every deploy that adds a file to db/migrations/.
- * getDb() migrates only the local PGlite database by itself; Postgres (DATABASE_URL) is migrated here and nowhere else.
+ * getDb() also migrates on open (Postgres under an advisory lock, since 5856b77), so a deploy applies new files at boot;
+ * this script is the explicit pre-deploy step and prints what the database holds.
  */
 import { getDb, migrate } from '../lib/db';
 
