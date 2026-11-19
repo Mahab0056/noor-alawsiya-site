@@ -263,12 +263,13 @@ test('disable ends sessions and logins; unlock clears the 15-minute lock; nobody
   await setAdminDisabled(db, superId, adminId, false);
   assert.ok((await loginAdmin(db, 'stop@example.test', 'stop-admin-password', totpAt(totpSecret, Date.now()), IP)).ok);
 
-  for (let i = 0; i < 5; i++) await loginAdmin(db, 'stop@example.test', 'wrong-password-x', '000000', `10.5.0.${i}`);
-  const locked = await loginAdmin(db, 'stop@example.test', 'stop-admin-password', totpAt(totpSecret, Date.now() + 30_000), IP);
+  // Same address throughout, so this holds both under PR #2 (5 per e-mail) and under the review branch (5 per e-mail and address).
+  for (let i = 0; i < 5; i++) await loginAdmin(db, 'stop@example.test', 'wrong-password-x', '000000', '10.5.0.1');
+  const locked = await loginAdmin(db, 'stop@example.test', 'stop-admin-password', totpAt(totpSecret, Date.now() + 30_000), '10.5.0.1');
   assert.deepEqual(locked, { ok: false, reason: 'throttled' }, 'PR #2 lock rule unchanged');
   assert.equal((await listAdmins(db)).find((a) => a.id === adminId)?.locked, true);
   await unlockAdmin(db, superId, adminId);
-  assert.ok((await loginAdmin(db, 'stop@example.test', 'stop-admin-password', totpAt(totpSecret, Date.now() + 30_000), IP)).ok);
+  assert.ok((await loginAdmin(db, 'stop@example.test', 'stop-admin-password', totpAt(totpSecret, Date.now() + 30_000), '10.5.0.1')).ok);
 
   await assert.rejects(setAdminDisabled(db, superId, superId, true), (e: InviteError) => e.code === 'self');
   await assert.rejects(resendInvite(db, superId, superId, deps, { reset: true }), (e: InviteError) => e.code === 'self');
