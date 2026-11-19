@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local development database (PGlite) and secrets
+/.pglite/
+.env*
+!.env.example
