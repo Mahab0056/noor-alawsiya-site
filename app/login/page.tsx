@@ -6,7 +6,7 @@ import { LoginForm } from '@/components/LoginForms';
 import { Logo } from '@/components/SiteChrome';
 import { currentStudent } from '@/lib/session';
 
-export const metadata: Metadata = { title: 'دخول الطلاب', description: 'ادخل برقم هاتفك وكلمة المرور لمتابعة طلب التسجيل.' };
+export const metadata: Metadata = { title: 'دخول الطلاب', description: 'ادخل برقم هاتفك وكلمة المرور لمتابعة طلب التسجيل.', robots: { index: false, follow: false } };
 
 export default function LoginPage() {
   return (
