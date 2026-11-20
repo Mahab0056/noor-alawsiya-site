@@ -31,7 +31,7 @@ async function course(name = 'دورة تجريبية') {
 
 test('migrations apply cleanly and are recorded', async () => {
   const rows = await db.query<{ name: string }>('select name from schema_migrations order by name');
-  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql', '0004_guardian_not_blank.sql', '0005_admin_invites.sql', '0006_admin_email_codes.sql']);
+  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql', '0004_guardian_not_blank.sql', '0005_admin_invites.sql', '0006_admin_email_codes.sql', '0007_second_course.sql']);
 });
 
 test('guardian name and phone cannot be blank strings', async () => {
@@ -66,6 +66,8 @@ test('enrollment follows the registration status', async () => {
   assert.equal(await enrolled(), 1, 'accepted is enrolled');
   await db.query(`update registrations set status = 'rejected' where id = $1`, [reg.id]);
   assert.equal(await enrolled(), 0, 'a later rejection revokes access');
+  // Since 0007 a rejected course can be asked for again, but only one request per course may be pending or accepted.
+  await db.query('insert into registrations (student_id, course_id) values ($1, $2)', [s, c]);
   await rejects(db.query('insert into registrations (student_id, course_id) values ($1, $2)', [s, c]), /unique|duplicate/i);
 });
 

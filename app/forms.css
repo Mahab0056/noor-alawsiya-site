@@ -119,3 +119,15 @@ fieldset.q > legend + * { clear: both; }
 
 /* The step heading takes focus by script so screen readers announce the new step; a ring around it only looks broken. */
 .reg-main h2[tabindex='-1']:focus { outline: none; }
+
+/* «اطلب دورة ثانية» في حسابي */
+.creq { margin-top: 4px; }
+.creq .field:last-of-type { margin-bottom: 16px; }
+.creq .opt { min-height: 44px; }
+.creq .btn { min-height: 48px; }
+@media (max-width: 560px) {
+  .creq .btn { width: 100%; }
+}
+.tag.known { background: var(--y-soft); color: var(--ink); }
+.who .tag.known, .hd .tag.known { margin-top: 4px; }
+.pre { white-space: pre-wrap; overflow-wrap: anywhere; }

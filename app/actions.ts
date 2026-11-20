@@ -3,9 +3,10 @@
 import { redirect } from 'next/navigation';
 import { loginStudent } from '@/lib/accounts';
 import { allowRegistration } from '@/lib/auth';
+import { requestCourse } from '@/lib/course-requests';
 import { getDb } from '@/lib/db';
 import { register, type Answers, type FieldErrors } from '@/lib/registration';
-import { clientIp, endSession, startSession } from '@/lib/session';
+import { clientIp, endSession, requireStudent, startSession } from '@/lib/session';
 
 const text = (form: FormData, name: string) => {
   const v = form.get(name);
@@ -53,6 +54,22 @@ export async function loginAction(_prev: LoginState, form: FormData): Promise<Lo
   if (result.reason === 'choose') return { names: result.names, phone };
   if (result.reason === 'throttled') return { error: 'محاولات كثيرة. انتظر ربع ساعة ثم حاول مرة أخرى.', phone };
   return { error: 'رقم الهاتف أو كلمة المرور غير صحيحة.', phone };
+}
+
+/** `sent` counts the answers, so the form can start fresh from `courseId` and `note` after each one (the guardian's tick is not kept). */
+export type CourseRequestState = { errors: FieldErrors; courseId: string; note: string; sent: number } | undefined;
+
+/**
+ * «اطلب دورة ثانية» on /account. A Server Action is a public endpoint: the session is checked here, and the student is
+ * the one in the session. The form carries no student id; anything of the kind that is posted is never read.
+ */
+export async function requestCourseAction(prev: CourseRequestState, form: FormData): Promise<CourseRequestState> {
+  const student = await requireStudent(); // signed out: sent to /login
+  const courseId = text(form, 'courseId');
+  const note = text(form, 'note');
+  const result = await requestCourse(await getDb(), student.id, { courseId, note, guardianConsent: form.get('guardianConsent') === 'on' });
+  if (!result.ok) return { errors: result.errors, courseId: courseId.slice(0, 20), note: note.slice(0, 1000), sent: (prev?.sent ?? 0) + 1 };
+  redirect('/account?sent=1');
 }
 
 export async function logoutAction() {

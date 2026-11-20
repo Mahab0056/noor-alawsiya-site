@@ -170,13 +170,13 @@ test('the admin sees the request with its answers, accepts it, and can reverse i
   const detail = await getRequest(db, mine.id);
   assert.deepEqual(detail?.answers.map((a) => a.answer), ['مبتدئ', NO, 'السبت، الثلاثاء']);
 
-  assert.ok(await reviewRequest(db, adminId, mine.id, 'accepted', 'أهلاً بك في الحلقة'));
+  assert.equal(await reviewRequest(db, adminId, mine.id, 'accepted', 'أهلاً بك في الحلقة'), 'saved');
   const enrolled = async () => (await db.query('select 1 from enrollments e join registrations r on r.student_id = e.student_id and r.course_id = e.course_id where r.id = $1', [mine.id])).length;
   assert.equal(await enrolled(), 1);
   assert.equal((await countRequests(db)).accepted, 1);
-  assert.ok(await reviewRequest(db, adminId, mine.id, 'rejected', ''));
+  assert.equal(await reviewRequest(db, adminId, mine.id, 'rejected', ''), 'saved');
   assert.equal(await enrolled(), 0);
-  assert.equal(await reviewRequest(db, adminId, 99999, 'accepted', ''), false);
+  assert.equal(await reviewRequest(db, adminId, 99999, 'accepted', ''), 'missing');
 
   const log = await db.query<{ action: string; target: string; detail: unknown }>(`select action, target, detail from audit_log where target = $1 order by id`, [`registration:${mine.id}`]);
   assert.deepEqual(log.map((l) => l.action), ['registration.accepted', 'registration.rejected']);
