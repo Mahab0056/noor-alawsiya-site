@@ -82,6 +82,29 @@ export async function reviewRequest(db: Db, adminId: number, id: number, decisio
   });
 }
 
+/**
+ * An admin opened «إبلاغ عبر واتساب» for a decided request. The site sends nothing itself, so this records only
+ * that the prepared chat was opened: by request id and decision, never the phone number, name or message.
+ */
+export async function recordNotified(db: Db, adminId: number, id: number) {
+  return db.tx(async (t) => {
+    const [r] = await t.query<{ status: RegistrationStatus }>('select status from registrations where id = $1', [id]);
+    if (!r || r.status === 'pending') return false;
+    await audit(t, adminId, 'registration.notified', `registration:${id}`, { decision: r.status });
+    return true;
+  });
+}
+
+/** When «إبلاغ عبر واتساب» was last opened for this request's current decision, or null. */
+export async function lastNotifiedAt(db: Db, id: number): Promise<Date | null> {
+  const [row] = await db.query<{ at: Date | null }>(
+    `select max(a.created_at) as at from audit_log a join registrations r on r.id = $1
+     where a.action = 'registration.notified' and a.target = 'registration:' || r.id::text and a.detail->>'decision' = r.status::text`,
+    [id]
+  );
+  return row?.at ? new Date(row.at) : null;
+}
+
 // ---------------------------------------------------------------- questionnaire builder
 
 export type QuestionInput = { label: string; kind: QuestionKind; options: string[]; required: boolean; showIf: ShowIf };

@@ -4,12 +4,15 @@ import { Suspense } from 'react';
 import { reviewAction } from '@/app/admin/actions';
 import { AdminShell } from '@/components/AdminShell';
 import { Icon } from '@/components/Icon';
-import { countRequests, getRequest, listRequests } from '@/lib/admin';
+import { NotifyWhatsAppLink } from '@/components/NotifyWhatsApp';
+import { countRequests, getRequest, lastNotifiedAt, listRequests, type RequestDetail } from '@/lib/admin';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
-import { formatDate, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
+import { formatDate, formatDateTime, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
+import { appOrigin } from '@/lib/mail';
 import type { RegistrationStatus } from '@/lib/registration';
 import { requireAdmin } from '@/lib/session';
+import { decisionMessage, DEFAULT_ORIGIN, notifyRecipient, whatsappLink } from '@/lib/whatsapp';
 
 export const metadata: Metadata = { title: 'طلبات التسجيل', robots: { index: false, follow: false } };
 
@@ -20,6 +23,45 @@ export default function AdminPage({ searchParams }: PageProps<'/admin'>) {
     <Suspense fallback={null}>
       <Requests searchParams={searchParams} />
     </Suspense>
+  );
+}
+
+const siteOrigin = () => {
+  try {
+    return appOrigin();
+  } catch {
+    return DEFAULT_ORIGIN;
+  }
+};
+
+/** «إبلاغ عبر واتساب»: shown once a request is accepted or rejected. Opens a prepared chat on the admin's own phone. */
+function NotifyBox({ request, notifiedAt }: { request: RequestDetail; notifiedAt: Date | null }) {
+  if (request.status === 'pending') return null;
+  const { to, number } = notifyRecipient(request);
+  const who = to === 'guardian' ? 'ولي الأمر' : 'الطالب';
+  return (
+    <div className="notify">
+      {number ? (
+        <>
+          <NotifyWhatsAppLink href={whatsappLink(number, decisionMessage(request.status, request.course, siteOrigin()))} requestId={request.id} describedBy="notify-hint">
+            <Icon name="msg" size="s" />
+            إبلاغ {who} عبر واتساب
+            <span className="vh"> (يفتح واتساب في نافذة جديدة)</span>
+          </NotifyWhatsAppLink>
+          <p className="hint" id="notify-hint">
+            يفتح واتساب على جهازك برسالة جاهزة فيها اسم الدورة والنتيجة ورابط الحساب. لا يُرسل شيء إلا إذا ضغطت إرسال.
+          </p>
+        </>
+      ) : (
+        <p className="hint">رقم هاتف {who} المسجّل لا يصلح لواتساب، فلا يمكن تجهيز الرسالة.</p>
+      )}
+      {notifiedAt ? (
+        <p className="hint done">
+          <Icon name="check" size="s" />
+          فُتحت رسالة واتساب لهذا القرار في {formatDateTime(notifiedAt)}.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -39,7 +81,12 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
   const openId = typeof params.id === 'string' && /^\d{1,15}$/.test(params.id) ? Number(params.id) : null;
 
   const db = await getDb();
-  const [counts, rows, open] = await Promise.all([countRequests(db), listRequests(db, status), openId ? getRequest(db, openId) : null]);
+  const [counts, rows, open, notifiedAt] = await Promise.all([
+    countRequests(db),
+    listRequests(db, status),
+    openId ? getRequest(db, openId) : null,
+    openId ? lastNotifiedAt(db, openId) : null,
+  ]);
 
   return (
     <AdminShell admin={admin} current="requests" pending={counts.pending}>
@@ -182,6 +229,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                 حُفظ القرار، وسيراه الطالب في حسابه.
               </p>
             ) : null}
+            <NotifyBox request={open} notifiedAt={notifiedAt} />
             <form className="ft" action={reviewAction}>
               <input type="hidden" name="id" value={open.id} />
               <input type="hidden" name="from" value={status} />

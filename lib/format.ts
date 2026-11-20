@@ -5,6 +5,8 @@ export const STATUS_TAG: Record<RegistrationStatus, string> = { pending: 'warn',
 
 const DATE = new Intl.DateTimeFormat('ar-IQ-u-nu-arab-ca-gregory', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Baghdad' });
 export const formatDate = (d: Date) => DATE.format(d);
+const DATE_TIME = new Intl.DateTimeFormat('ar-IQ-u-nu-arab-ca-gregory', { day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Baghdad' });
+export const formatDateTime = (d: Date) => DATE_TIME.format(d);
 
 const DIGITS = new Intl.NumberFormat('ar-EG', { useGrouping: false });
 /** Arabic-Indic digits, as the site shows numbers everywhere else. Also used in e-mails, where the text has no site font. */
