@@ -131,3 +131,39 @@ fieldset.q > legend + * { clear: both; }
 .tag.known { background: var(--y-soft); color: var(--ink); }
 .who .tag.known, .hd .tag.known { margin-top: 4px; }
 .pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* «بلّغوني لما تنفتح» (waitlist) */
+.hp { position: absolute; inset-inline-start: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.wl { border-top: 1px solid var(--line); margin-top: 6px; padding-top: 18px; }
+.wl h2 { font-size: 18px; text-align: center; margin-bottom: 4px; }
+.wl > p.mute { text-align: center; font-size: 14px; margin-bottom: 16px; }
+.wl-form .opt { align-items: flex-start; line-height: 1.6; }
+.wl-form .opt input { margin-top: 2px; }
+.wl-form .btn { min-height: 48px; }
+.wl-done { background: var(--ok-bg); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; font-size: 14.5px; line-height: 1.7; }
+.wl-done b { color: var(--ok); font-size: 16px; }
+.wl-done p { margin: 0; }
+.wl-done:focus { outline: 2px solid var(--k); outline-offset: 2px; }
+table.rec tr.has-wl td { border-bottom: 0; padding-bottom: 4px; }
+table.rec tr.wl-row td { padding-top: 0; }
+.wl-details summary { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; cursor: pointer; font-weight: 600; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.wl-details summary:focus-visible { outline: 2px solid var(--k); outline-offset: 2px; border-radius: 6px; }
+.wl-details[open] summary { margin-bottom: 10px; }
+.wl-details .wl-form, .wl-details .wl-done { max-width: 520px; }
+@media (max-width: 900px) {
+  table.rec tr.has-wl { border-bottom: 0; padding-bottom: 0; }
+  table.rec tr.wl-row { padding-top: 0; }
+  table.rec tr.wl-row td { display: block; }
+  .wl-form .btn { width: 100%; }
+}
+
+/* /admin/waitlist */
+.wl-group { margin-bottom: 18px; min-width: 0; }
+.wl-group .ch { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.wl-group .ch h2 { margin: 0; }
+.wl-msg { min-width: 0; padding: 12px 22px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; font-size: 14px; }
+.wl-msg pre { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; font: inherit; margin: 0; background: #fbfaf3; border-radius: 10px; padding: 10px 12px; }
+.wl-msg .acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.qrow .num { direction: ltr; unicode-bidi: isolate; }
+.banner-wl { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; }
+.banner-wl a { font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }

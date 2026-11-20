@@ -3,11 +3,13 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { RegisterForm } from '@/components/RegisterForm';
+import { WaitlistForm } from '@/components/WaitlistForm';
 import { Logo } from '@/components/SiteChrome';
 import { CONTACT } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { listOpenCourses, listQuestions } from '@/lib/registration';
 import { currentStudent } from '@/lib/session';
+import { listWaitlistCourses } from '@/lib/waitlist';
 
 export const metadata: Metadata = {
   title: 'التسجيل',
@@ -41,10 +43,18 @@ async function Register({ searchParams }: Pick<PageProps<'/register'>, 'searchPa
     return (
       <Shell>
         <h1>التسجيل غير متاح الآن</h1>
-        <p className="sub">لا توجد دورات مفتوحة للتسجيل من الموقع حالياً. تواصل مع إدارة المدرسة.</p>
-        <a className="btn k" href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
-          واتساب المدرسة
-        </a>
+        <p className="sub">لا توجد دورات مفتوحة للتسجيل من الموقع حالياً.</p>
+        <section className="wl" aria-labelledby="wl-title">
+          <h2 id="wl-title">بلّغوني لما تنفتح دورة</h2>
+          <p className="mute">اترك رقم واتساب ولي الأمر، ونراسلك لما ينفتح التسجيل.</p>
+          <WaitlistForm courses={await listWaitlistCourses(db)} />
+        </section>
+        <p className="alt">
+          عندك سؤال؟{' '}
+          <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
+            واتساب المدرسة
+          </a>
+        </p>
         <p className="alt">
           <Link href="/">العودة إلى الرئيسية</Link>
         </p>

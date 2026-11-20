@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { setCourseOpenAction } from '@/app/admin/courses/actions';
 import { AdminShell } from '@/components/AdminShell';
@@ -8,6 +9,7 @@ import { listCoursesForAdmin, type AdminCourse } from '@/lib/courses';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { requireSuperAdmin } from '@/lib/session';
+import { waitingCounts } from '@/lib/waitlist';
 
 export const metadata: Metadata = { title: 'الدورات', robots: { index: false, follow: false } };
 
@@ -28,8 +30,11 @@ function StateTag({ c }: { c: AdminCourse }) {
 async function Courses() {
   const admin = await requireSuperAdmin();
   const db = await getDb();
-  const [courses, counts] = await Promise.all([listCoursesForAdmin(db), countRequests(db)]);
+  const [courses, counts, waiting] = await Promise.all([listCoursesForAdmin(db), countRequests(db), waitingCounts(db)]);
   const open = courses.filter((c) => c.accepting).length;
+  // «X ينتظرون هالدورة»: courses taking registrations that people on the waitlist asked about, then «أي دورة».
+  const waitBanners = courses.filter((c) => c.accepting && (waiting.byCourse.get(c.id) ?? 0) > 0).map((c) => ({ id: `c-${c.id}`, n: waiting.byCourse.get(c.id)!, what: `«${c.name}»` }));
+  if (open > 0 && waiting.any > 0) waitBanners.push({ id: 'any', n: waiting.any, what: 'أي دورة' });
 
   return (
     <AdminShell admin={admin} current="courses" pending={counts.pending}>
@@ -41,6 +46,14 @@ async function Courses() {
           </p>
         </div>
       </div>
+      {waitBanners.map((b) => (
+        <p className="alert info banner-wl" role="status" key={b.id}>
+          <span>
+            <b>{ar(b.n)}</b> ينتظرون {b.what === 'أي دورة' ? 'أي دورة تنفتح' : `هالدورة: ${b.what}`}.
+          </span>
+          <Link href={`/admin/waitlist#${b.id}`}>بلّغهم من قائمة الانتظار</Link>
+        </p>
+      ))}
       <div className="row">
         <div className="card">
           <div className="ch">
