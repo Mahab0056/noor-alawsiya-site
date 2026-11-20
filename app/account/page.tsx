@@ -19,7 +19,7 @@ const EXPLAIN: Record<RegistrationStatus, string> = {
 export default function AccountPage() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader current="account" />
       <main id="main">
         <section className="sec">
           <div className="wrap acct">
