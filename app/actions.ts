@@ -5,8 +5,10 @@ import { loginStudent } from '@/lib/accounts';
 import { allowRegistration } from '@/lib/auth';
 import { requestCourse } from '@/lib/course-requests';
 import { getDb } from '@/lib/db';
-import { register, type Answers, type FieldErrors } from '@/lib/registration';
+import { listOpenCourses, register, type Answers, type FieldErrors } from '@/lib/registration';
 import { clientIp, endSession, requireStudent, startSession } from '@/lib/session';
+import { allowWaitlist, joinWaitlist, listWaitlistCourses } from '@/lib/waitlist';
+import { validateWaitlist } from '@/lib/waitlist-rules';
 
 const text = (form: FormData, name: string) => {
   const v = form.get(name);
@@ -75,4 +77,28 @@ export async function requestCourseAction(prev: CourseRequestState, form: FormDa
 export async function logoutAction() {
   await endSession('student');
   redirect('/login');
+}
+
+/** «بلّغوني لما تنفتح». `done` replaces the form with the thank-you; a repeat of the same phone and course looks the same. */
+export type WaitlistState = { done: true } | { done?: false; errors: FieldErrors; values: { phone: string; guardianName: string; courseId: string; ageBand: string } } | undefined;
+
+/**
+ * Public, no session. Order: honeypot, validation, per-address caps, store. The honeypot answers like a success and stores
+ * nothing. Nothing is logged and nothing is sent: the team messages people by hand from /admin/waitlist.
+ */
+export async function waitlistAction(_prev: WaitlistState, form: FormData): Promise<WaitlistState> {
+  if (text(form, 'website')) return { done: true };
+  const values = { phone: text(form, 'phone').slice(0, 40), guardianName: text(form, 'guardianName').slice(0, 200), courseId: text(form, 'courseId').slice(0, 20), ageBand: text(form, 'ageBand').slice(0, 20) };
+  const db = await getDb();
+  const checked = validateWaitlist({ ...values, consent: form.get('consent') === 'on' }, (await listWaitlistCourses(db)).map((c) => c.id));
+  if (!checked.ok) {
+    // A course that opened while the form was on screen: say so, rather than a vague error.
+    if (checked.errors.courseId && (await listOpenCourses(db)).some((c) => String(c.id) === values.courseId)) {
+      checked.errors.courseId = 'هالدورة انفتح بيها التسجيل هسه. تگدر تسجّل من صفحة التسجيل.';
+    }
+    return { errors: checked.errors, values };
+  }
+  if (!(await allowWaitlist(db, await clientIp()))) return { errors: { form: 'طلبات كثيرة من هذا الاتصال. جرّب بعد ساعة، أو راسلنا على واتساب المدرسة.' }, values };
+  if ((await joinWaitlist(db, checked.value)) === 'full') return { errors: { form: 'القائمة مزدحمة اليوم. جرّب باچر، أو راسلنا على واتساب المدرسة.' }, values };
+  return { done: true };
 }
