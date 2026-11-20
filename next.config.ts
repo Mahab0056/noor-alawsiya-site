@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   // PGlite (the local development database) loads its own wasm files from disk, so it must not be bundled.
   serverExternalPackages: ['@electric-sql/pglite'],
+  // Mobile speed (variant B): AVIF first (smaller than WebP for the hero photo), and allow quality 60 for the hero.
+  images: { formats: ['image/avif', 'image/webp'], qualities: [60, 75] },
   async headers() {
     return [
       {
