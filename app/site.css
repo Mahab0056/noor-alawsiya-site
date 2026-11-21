@@ -46,3 +46,32 @@ a:focus-visible, .btn:focus-visible { outline: 3px solid var(--k); outline-offse
   .card.course { transition: transform 0.2s ease, box-shadow 0.2s ease; }
   .card.course:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(11, 11, 12, 0.06), 0 18px 40px rgba(11, 11, 12, 0.12); }
 }
+
+/* ---------- صفحة الدورة الواحدة والمشاركة (awsiya-dev-course-share-2111) ---------- */
+.phead .eye a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.ctags { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.cpage { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; align-items: start; }
+.cfacts { padding: 8px 24px 22px; }
+.cfacts dl { margin: 0; }
+.cfacts dl div { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.5; }
+.cfacts dt { color: var(--mute); font-size: 13.5px; padding-top: 2px; }
+.cfacts dd { margin: 0; font-weight: 600; }
+.cfacts .acts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.cshare { padding: 22px 24px; display: grid; gap: 10px; }
+.cshare h2 { font-size: 20px; }
+.cshare p { font-size: 14px; }
+.share { display: flex; gap: 8px; flex-wrap: wrap; }
+.share .btn { min-height: 44px; }
+.share button.btn.o { background: transparent; color: inherit; cursor: pointer; }
+.share.c .btn { padding-inline: 12px; }
+.back { text-decoration: underline; text-underline-offset: 3px; font-weight: 600; }
+.course .hd h3 a, table.rec td b a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.course .sh { padding: 0 22px 16px; display: flex; }
+.course .sh .btn { min-height: 44px; }
+table.rec td .share { margin-top: 8px; }
+@media (max-width: 900px) {
+  .cpage { grid-template-columns: 1fr; }
+  .cfacts { padding: 4px 18px 18px; }
+  .cfacts dl div { grid-template-columns: 90px 1fr; }
+  .cfacts .acts .btn, .cshare .share .btn { flex: 1 1 100%; }
+}

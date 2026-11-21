@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { NotStated, TeacherGrid } from '@/components/Cards';
 import { JsonLd } from '@/components/JsonLd';
+import { ShareCourse } from '@/components/ShareCourse';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { COURSES_LD } from '@/lib/seo';
+import { courseSlug, coursePath } from '@/lib/share';
 import { ar, countOf, COURSES, DONE_COURSES, OPEN_COURSES, TEACHERS, type CourseStatus } from '@/lib/data';
 
 export const metadata: Metadata = {
@@ -68,8 +71,9 @@ export default function CoursesPage() {
                   {COURSES.map((c) => (
                     <tr key={c.name}>
                       <td data-l="">
-                        <b>{c.name}</b>
+                        <b id={courseSlug(c) ? `c-${courseSlug(c)}` : undefined}>{courseSlug(c) ? <Link href={coursePath(courseSlug(c)!)} prefetch={false}>{c.name}</Link> : c.name}</b>
                         <small>{c.kindLabel ?? <NotStated />}</small>
+                        {courseSlug(c) ? <ShareCourse compact name={c.name} slug={courseSlug(c)!} describedBy={`c-${courseSlug(c)}`} /> : null}
                       </td>
                       <td data-l="الأستاذ">{c.teacher}</td>
                       <td data-l="المكان">{c.place ?? <NotStated />}</td>
