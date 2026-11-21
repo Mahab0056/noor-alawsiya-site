@@ -26,6 +26,11 @@
 
 /* روابط الترويسة وأزرارها: ٤٤ بكسل على كل العروض */
 .nav nav a, .nav .acts .btn, .top .sp .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+/* Header student link (components/StudentNavLink.tsx): the label not shown («دخول الطلاب» or «حسابي») stays in the
+   link, hidden and zero-height, so the link keeps the width of the longer label and the header does not move when the
+   streamed one arrives. The shown label stays plain text in the link, as before. */
+.nav nav a.me { flex-direction: column; }
+.nav nav a.me > .spare { height: 0; overflow: hidden; visibility: hidden; }
 
 a:focus-visible, .btn:focus-visible { outline: 3px solid var(--k); outline-offset: 3px; box-shadow: 0 0 0 6px var(--y); }
 

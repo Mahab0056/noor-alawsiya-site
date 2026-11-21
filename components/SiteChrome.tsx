@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { RegistrationStrip } from './RegistrationState';
+import { StudentLink, StudentNavLink } from './StudentNavLink';
 import { CONTACT } from '@/lib/data';
 
 // Logo lives in ./Logo so client components can use it without pulling in RegistrationStrip (it reads the database).
@@ -47,14 +48,9 @@ export function SiteHeader({ current }: { current?: NavKey }) {
               </Link>
             ))}
             <a href="#contact">تواصل</a>
-            {/* On /account the student is signed in: the last link names their own page and is the current one. */}
-            {current === 'account' ? (
-              <Link href="/account" className="on" aria-current="page">
-                حسابي
-              </Link>
-            ) : (
-              <Link href="/login">دخول الطلاب</Link>
-            )}
+            {/* On /account the student is signed in, so the last link is their own page. Elsewhere it is streamed:
+                «حسابي» when there is a student session cookie, «دخول الطلاب» otherwise (components/StudentNavLink.tsx). */}
+            {current === 'account' ? <StudentLink signedIn current /> : <StudentNavLink />}
           </nav>
           <div className="acts">
             <Link className="btn k sm" href="/register">
