@@ -1,6 +1,7 @@
 import 'server-only';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { maybePrune } from './retention';
 
 /**
  * Database access.
@@ -129,8 +130,14 @@ export function getDb(): Promise<Db> {
       if (holder.__noorDb === opening) holder.__noorDb = undefined;
     });
   }
-  return holder.__noorDb;
+  const db = holder.__noorDb;
+  // Daily retention of attempts / expired sessions (lib/retention.ts): at most once an hour, in the background, only in
+  // the running Next server: every page, action and /healthz goes through here. Not during `next build`, tests or scripts.
+  if (autoPrune()) db.then((d) => maybePrune(d), () => {});
+  return db;
 }
+
+const autoPrune = () => process.env.NEXT_RUNTIME === 'nodejs' && process.env.NEXT_PHASE !== 'phase-production-build';
 
 /** Tests only: start from a fresh in-memory database. */
 export async function resetDbForTests(): Promise<Db> {
