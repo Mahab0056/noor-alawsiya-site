@@ -121,7 +121,11 @@ svg.i.l { width: 26px; height: 26px; }
 .stp .n { width: 56px; height: 56px; border-radius: 50%; background: var(--y); border: 2px solid var(--k); display: grid; place-items: center; margin: 0 auto 16px; position: relative; }
 .stp h3 { font-size: 17.5px; margin-bottom: 4px; }
 .stp p { font-size: 14.5px; color: var(--mute); }
-.ayah { background: var(--y); text-align: center; padding: 56px 0; border-block: 2px solid var(--k); }
+/* content-visibility: the ayah is the only Amiri text, far below the first screen. While it is off screen the browser
+   skips its layout, so the Amiri files (~120 KB) are not fetched during the first load and do not compete with the hero
+   photo. The sizes are the drawn heights (211px wide screens, 191px phones); `auto` keeps the real height once drawn.
+   Full-page screenshots leave it empty (the capture does not draw skipped content): scroll it into view for a shot. */
+.ayah { background: var(--y); text-align: center; padding: 56px 0; border-block: 2px solid var(--k); content-visibility: auto; contain-intrinsic-size: auto 211px; }
 .ayah p { font: 700 34px/2 var(--quran); max-width: 900px; margin: 0 auto; }
 .ayah span { font-size: 14px; font-weight: 600; }
 .cta { background: var(--k) var(--pat); color: #fff; border-radius: 24px; padding: 40px 44px; display: flex; align-items: center; gap: 24px; }
@@ -174,6 +178,7 @@ tr:last-child td { border-bottom: 0; }
   .steps::before { display: none; }
   .stp { display: grid; grid-template-columns: 56px 1fr; gap: 14px; text-align: start; padding: 0; }
   .stp .n { margin: 0; grid-row: span 2; }
+  .ayah { contain-intrinsic-size: auto 191px; }
   .ayah p { font-size: 24px; padding: 0 18px; }
   .cta { flex-direction: column; align-items: stretch; padding: 28px 22px; text-align: center; }
   .cta .sp { margin: 0; flex-direction: column; }
