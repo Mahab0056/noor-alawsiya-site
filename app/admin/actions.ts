@@ -96,7 +96,7 @@ export async function notifiedAction(requestId: unknown) {
   if (await recordNotified(await getDb(), admin.id, requestId)) refresh();
 }
 
-export type StudentResetState = { password: string; link: string | null; to: NotifyRecipient } | { error: string } | undefined;
+export type StudentResetState = { password: string; link: string | null; to: NotifyRecipient; phoneEnd: string } | { error: string } | undefined;
 
 /**
  * «كلمة مرور مؤقتة»: for the student behind request `id`. The password comes back once, in this answer only (never in a
@@ -112,7 +112,12 @@ export async function studentResetAction(_prev: StudentResetState, form: FormDat
   try {
     origin = appOrigin();
   } catch {}
-  return { password: reset.password, to: reset.to, link: reset.number ? whatsappLink(reset.number, tempPasswordMessage(reset.password, origin)) : null };
+  return {
+    password: reset.password,
+    to: reset.to,
+    phoneEnd: reset.phoneEnd,
+    link: reset.number ? whatsappLink(reset.number, tempPasswordMessage(reset.password, origin, reset.phoneEnd)) : null,
+  };
 }
 
 export type QuestionState ={ error?: string; saved: number } | undefined;

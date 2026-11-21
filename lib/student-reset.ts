@@ -11,6 +11,8 @@ import { DEFAULT_ORIGIN, notifyRecipient, type NotifyRecipient } from './whatsap
  * and registering again with the same name and phone is refused.
  *
  * - The new password replaces the old one at once, and every session of that student ends.
+ * - Failed sign-ins for the student's phone are cleared: a student who forgot the password has usually used up the
+ *   five tries, and would otherwise be told «انتظر ربع ساعة» with the new password in hand.
  * - It is returned once, to the admin who asked, and never stored or logged in clear (argon2id hash only).
  * - audit_log gets `student.password_reset` with `student:<id>` only: no name, no phone, no password.
  */
@@ -25,7 +27,8 @@ export function tempPassword() {
   return out;
 }
 
-export type StudentReset = { password: string; to: NotifyRecipient; number: string | null };
+/** phoneEnd: the last 4 digits of the phone the student signs in with (for a minor this is not the guardian's number). */
+export type StudentReset = { password: string; to: NotifyRecipient; number: string | null; phoneEnd: string };
 
 /** For the student behind registration `registrationId`. null if there is no such request. */
 export async function resetStudentPassword(db: Db, adminId: number, registrationId: number): Promise<StudentReset | null> {
@@ -39,18 +42,22 @@ export async function resetStudentPassword(db: Db, adminId: number, registration
     if (!s) return null;
     await t.query('update students set password_hash = $2 where id = $1', [s.id, hash]);
     await t.query('delete from sessions where student_id = $1', [s.id]);
+    await t.query(`delete from login_attempts where scope = 'student' and identifier = $1 and not succeeded`, [s.phone]);
     await audit(t, adminId, 'student.password_reset', `student:${s.id}`);
     const { to, number } = notifyRecipient({ birthYear: s.birth_year, phone: s.phone, guardianPhone: s.guardian_phone });
-    return { password, to, number };
+    return { password, to, number, phoneEnd: s.phone.slice(-4) };
   });
 }
 
-/** The WhatsApp text: the password and where to use it. No name, so a sibling sharing the phone is not exposed. */
-export function tempPasswordMessage(password: string, origin = DEFAULT_ORIGIN) {
+/**
+ * The WhatsApp text: the password and where to use it. No name, so a sibling sharing the phone is not exposed. It says
+ * which phone to sign in with (last 4 digits): a guardian gets it for a minor, and sign-in only takes the student's phone.
+ */
+export function tempPasswordMessage(password: string, origin = DEFAULT_ORIGIN, phoneEnd?: string) {
   return [
     'السلام عليكم ورحمة الله وبركاته،',
     'من مدرسة نور الأوصياء للدراسات القرآنية: هذه كلمة مرور مؤقتة لحساب الطالب على الموقع، والكلمة السابقة لم تعد تعمل.',
     password,
-    `ادخل من ${origin}/login برقم الهاتف المسجّل وهذه الكلمة. لا تعطها لأحد.`,
+    `ادخل من ${origin}/login برقم هاتف الطالب${phoneEnd ? ` المنتهي بـ ${phoneEnd}` : ' المسجّل في الطلب'} وهذه الكلمة. لا تعطها لأحد.`,
   ].join('\n');
 }

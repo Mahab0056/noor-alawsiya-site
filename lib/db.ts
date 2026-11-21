@@ -31,7 +31,9 @@ async function openPg(url: string): Promise<Db> {
   const pg = mod.default ?? mod;
   // bigint ids and count(*) arrive as text by default. Every id here is far below 2^53, so read them as numbers (PGlite does the same).
   pg.types.setTypeParser(20, Number);
-  const pool = new pg.Pool({ connectionString: url, max: 10 });
+  // connectionTimeoutMillis: a database that does not answer at all (host gone, network drop) fails after 10 s instead of
+  // the operating system's TCP timeout (about 2 minutes on Linux), so /healthz says 503 and getDb() can try again.
+  const pool = new pg.Pool({ connectionString: url, max: 10, connectionTimeoutMillis: 10_000 });
   // An idle connection dropped by the server (restart, failover) is an 'error' event on the pool. Without a listener it is
   // an uncaught exception; the pool already discards that connection and opens a new one on the next query.
   pool.on('error', (e: Error & { code?: string }) => console.error(`database: idle connection lost (${e.code ?? 'no code'})`));
@@ -125,8 +127,12 @@ export function getDb(): Promise<Db> {
     holder.__noorDb = opening;
     // A failed first connection (the database restarting while the site starts) must not stick: forget it, so the next
     // request tries again. Before this, every request kept failing until the whole site was restarted.
-    opening.catch(() => {
+    opening.catch((e: unknown) => {
       if (holder.__noorDb === opening) holder.__noorDb = undefined;
+      // Pages that catch this (the registration line, /healthz) show nothing in the logs otherwise. The error code, or the
+      // start of the message when there is none (a connect timeout); pg never puts the password in either.
+      const err = e as { code?: string; message?: string } | null;
+      console.error(`database: could not open (${err?.code ?? String(err?.message ?? 'unknown').slice(0, 80)}); the next request tries again`);
     });
   }
   return holder.__noorDb;

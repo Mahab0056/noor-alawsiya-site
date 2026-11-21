@@ -21,7 +21,13 @@ export function StudentResetForm({ requestId }: { requestId: number }) {
               {state.password}
             </b>
           </p>
-          <p className="hint">الكلمة السابقة توقفت، وخرج الطالب من كل أجهزته.</p>
+          <p className="hint">
+            الكلمة السابقة توقفت، وخرج الطالب من كل أجهزته. يدخل برقم هاتف الطالب المنتهي بـ{' '}
+            <span dir="ltr" className="num">
+              {state.phoneEnd}
+            </span>
+            .
+          </p>
           {state.link ? (
             <a className="btn w" href={state.link} target="_blank" rel="noopener noreferrer">
               أرسلها إلى {who} عبر واتساب<span className="vh"> (يفتح واتساب في نافذة جديدة)</span>
