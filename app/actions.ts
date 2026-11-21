@@ -39,7 +39,7 @@ export async function registerAction(_prev: RegisterState, form: FormData): Prom
   });
   if (!result.ok) return { errors: result.errors };
   await startSession('student', result.studentId);
-  redirect('/account');
+  redirect('/account?new=1'); // the account page opens on «وصل طلب التسجيل»
 }
 
 export type LoginState = { error?: string; names?: string[]; phone?: string } | undefined;
