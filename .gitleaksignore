@@ -2,3 +2,6 @@
 # Recurring test patterns (migration names, placeholder Resend key) are allowlisted in .gitleaks.toml instead.
 # tests/flows.test.ts:142 (now 143) - public RFC 6238 TOTP test vector, base32 of "12345678901234567890"
 184ed9aba5e0f48b832cd04a58f0e73f890686d9:tests/flows.test.ts:generic-api-key:142
+# scripts/e2e/actions-probe.mjs:330 in 67c02c0 (21/11/2026, awsiya-actions-e2e-ci) - invented password sent to a made-up
+# invite token on the throwaway CI server; built at run time since the next commit. Not a secret.
+67c02c0938863e60822d6d5579eb5833efa84541:scripts/e2e/actions-probe.mjs:generic-api-key:330
