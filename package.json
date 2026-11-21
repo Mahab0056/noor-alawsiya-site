@@ -23,7 +23,7 @@
     "server-only": "^0.0.1"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^22",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -33,6 +33,6 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=20.9"
+    "node": ">=22.12 <23"
   }
 }
