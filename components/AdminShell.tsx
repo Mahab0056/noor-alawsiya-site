@@ -7,7 +7,7 @@ import { adminTotpEnabled } from '@/lib/flags';
 import { Icon } from './Icon';
 import { Logo } from './SiteChrome';
 
-type Key = 'requests' | 'courses' | 'form' | 'admins';
+type Key = 'requests' | 'courses' | 'campaigns' | 'form' | 'admins';
 
 /** Side navigation and top bar around every admin screen. Lists only the screens that exist. */
 export function AdminShell({ admin, current, pending, children }: { admin: AdminProfile; current: Key; pending: number; children: ReactNode }) {
@@ -22,6 +22,12 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
         <Link href="/admin/courses" className={current === 'courses' ? 'on' : undefined} aria-current={current === 'courses' ? 'page' : undefined}>
           <Icon name="book" />
           الدورات
+        </Link>
+      ) : null}
+      {admin.role === 'super_admin' ? (
+        <Link href="/admin/campaigns" className={current === 'campaigns' ? 'on' : undefined} aria-current={current === 'campaigns' ? 'page' : undefined}>
+          <Icon name="link" />
+          روابط الحملات
         </Link>
       ) : null}
       <Link href="/admin/form" className={current === 'form' ? 'on' : undefined} aria-current={current === 'form' ? 'page' : undefined}>

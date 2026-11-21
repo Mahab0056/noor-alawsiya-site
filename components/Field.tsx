@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 /** A labelled form field with an optional hint and an error message tied to the input by id. */
-export function Field({ id, label, hint, error, required, children }: { id: string; label: string; hint?: string; error?: string; required?: boolean; children: ReactNode }) {
+export function Field({ id, label, hint, error, required, children }: { id: string; label: string; hint?: ReactNode; error?: string; required?: boolean; children: ReactNode }) {
   return (
     <div className="field">
       <label htmlFor={id}>
