@@ -78,12 +78,14 @@ export async function reviewAction(form: FormData) {
   const requestId = id(form);
   const decision = text(form, 'decision');
   const from = STATUSES.find((s) => s === text(form, 'from')) ?? 'pending';
+  // Keep the course filter the admin was working in (digits only; the page ignores an unknown course).
+  const course = /^\d{1,15}$/.test(text(form, 'course')) ? `&course=${text(form, 'course')}` : '';
   if (requestId && (decision === 'accepted' || decision === 'rejected')) {
     const result = await reviewRequest(await getDb(), admin.id, requestId, decision, text(form, 'note'));
-    if (result === 'conflict') redirect(`/admin?status=${from}&id=${requestId}&conflict=1#request`);
-    redirect(`/admin?status=${decision}&id=${requestId}&done=1#request`); // show the request in its new list, still open
+    if (result === 'conflict') redirect(`/admin?status=${from}${course}&id=${requestId}&conflict=1#request`);
+    redirect(`/admin?status=${decision}${course}&id=${requestId}&done=1#request`); // show the request in its new list, still open
   }
-  redirect(`/admin?status=${from}`);
+  redirect(`/admin?status=${from}${course}`);
 }
 
 /** «إبلاغ عبر واتساب» was pressed: the browser opens wa.me itself; this only writes the audit line (id, no phone). */

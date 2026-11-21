@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Db } from './db';
+import type { QueueSort } from './queue';
 import { MAX_TEXT, type QuestionKind, type RegistrationStatus, type ShowIf } from './registration';
 
 /**
@@ -18,21 +19,54 @@ export async function audit(db: Db, adminId: number | null, action: string, targ
 /** existingStudent: asked for from «حسابي» by a student who already had an account (0007), not with the registration form. */
 export type RequestRow = { id: number; studentName: string; birthYear: number; hasGuardian: boolean; course: string; status: RegistrationStatus; createdAt: Date; existingStudent: boolean };
 
-export async function listRequests(db: Db, status: RegistrationStatus): Promise<RequestRow[]> {
+/**
+ * One status, optionally one course. Default order: waiting requests oldest first (lib/queue.ts defaultSort), so the
+ * request that has waited longest is answered first. The id breaks ties, so the order never changes between loads.
+ */
+export async function listRequests(
+  db: Db,
+  status: RegistrationStatus,
+  { courseId = null, sort = status === 'pending' ? 'oldest' : 'newest' }: { courseId?: number | null; sort?: QueueSort } = {}
+): Promise<RequestRow[]> {
+  const order = sort === 'oldest' ? 'r.created_at asc, r.id asc' : 'r.created_at desc, r.id desc';
   const rows = await db.query<{ id: string; full_name: string; birth_year: number; has_guardian: boolean; course: string; status: RegistrationStatus; created_at: Date; origin: string }>(
     `select r.id, s.full_name, s.birth_year, (s.guardian_consent_at is not null) as has_guardian, c.name as course, r.status, r.created_at, r.origin
      from registrations r join students s on s.id = r.student_id join courses c on c.id = r.course_id
-     where r.status = $1 order by r.created_at desc limit 200`,
-    [status]
+     where r.status = $1 and ($2::bigint is null or r.course_id = $2::bigint) order by ${order} limit 200`,
+    [status, courseId]
   );
   return rows.map((r) => ({ id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at), existingStudent: r.origin === 'account' }));
 }
 
-export async function countRequests(db: Db): Promise<Record<RegistrationStatus, number>> {
-  const rows = await db.query<{ status: RegistrationStatus; n: string }>('select status, count(*) as n from registrations group by status');
+/** Requests per status, for every course or for one. */
+export async function countRequests(db: Db, courseId: number | null = null): Promise<Record<RegistrationStatus, number>> {
+  const rows = await db.query<{ status: RegistrationStatus; n: string }>(
+    'select status, count(*) as n from registrations where ($1::bigint is null or course_id = $1::bigint) group by status',
+    [courseId]
+  );
   const out: Record<RegistrationStatus, number> = { pending: 0, accepted: 0, rejected: 0 };
   for (const r of rows) out[r.status] = Number(r.n);
   return out;
+}
+
+/** When the oldest request still waiting (any course) was sent, or null when none waits. */
+export async function oldestPendingAt(db: Db): Promise<Date | null> {
+  const [row] = await db.query<{ at: Date | null }>(`select min(created_at) as at from registrations where status = 'pending'`);
+  return row?.at ? new Date(row.at) : null;
+}
+
+export type CourseFilterOption = { id: number; name: string; pending: number };
+
+/** Courses for the list's course filter: every course that has a request or takes registrations now. */
+export async function listCourseFilterOptions(db: Db): Promise<CourseFilterOption[]> {
+  const rows = await db.query<{ id: string; name: string; pending: string }>(
+    `select c.id, c.name, count(r.id) filter (where r.status = 'pending') as pending
+       from courses c left join registrations r on r.course_id = c.id
+      group by c.id
+     having count(r.id) > 0 or (c.published and c.status = 'open')
+      order by count(r.id) filter (where r.status = 'pending') desc, c.name, c.id`
+  );
+  return rows.map((r) => ({ id: Number(r.id), name: r.name, pending: Number(r.pending) }));
 }
 
 export type RequestDetail = RequestRow & {

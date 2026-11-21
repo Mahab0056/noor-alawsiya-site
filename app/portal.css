@@ -71,6 +71,12 @@
 .tabs a.on { color: var(--ink); font-weight: 700; box-shadow: inset 0 -3px 0 var(--k); }
 .tabs a b { font-size: 11.5px; background: #efecdb; border-radius: 999px; padding: 0 7px; }
 .tabs a.on b { background: var(--y); }
+/* «طلبات التسجيل»: ملخص الانتظار، وتصفية القائمة حسب الدورة والترتيب */
+.queue-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.filt { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 12px; padding: 14px 22px; border-bottom: 1px solid var(--line); }
+.filt .field { flex: 1 1 200px; margin: 0; gap: 4px; }
+.filt .field > label { font-size: 13px; color: var(--mute); }
+.filt .btn { min-height: 48px; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { text-align: start; font-size: 12.5px; color: var(--mute); font-weight: 600; padding: 11px 14px; white-space: nowrap; background: #fbfaf3; border-bottom: 1px solid var(--line); }
 td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
