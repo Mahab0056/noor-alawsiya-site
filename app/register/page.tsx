@@ -51,8 +51,9 @@ async function Register({ searchParams }: Pick<PageProps<'/register'>, 'searchPa
       </Shell>
     );
   }
+  // `?course=<id>` from the public pages; a course name still works for links shared before ids.
   const wanted = typeof params.course === 'string' ? params.course : undefined;
   // The year is read on the server (Baghdad time) so the under-18 rule matches what the server will enforce.
   const thisYear = Number(new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: 'Asia/Baghdad' }).format(new Date()));
-  return <RegisterForm courses={courses} questions={questions} preselect={courses.find((c) => c.name === wanted)?.id} thisYear={thisYear} />;
+  return <RegisterForm courses={courses} questions={questions} preselect={courses.find((c) => String(c.id) === wanted || c.name === wanted)?.id} thisYear={thisYear} />;
 }

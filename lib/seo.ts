@@ -1,4 +1,4 @@
-import { CONTACT, COURSES } from '@/lib/data';
+import { CONTACT } from '@/lib/data';
 
 const ORIGIN = 'https://noor-alawsiya.com';
 const NAME = 'مدرسة نور الأوصياء للدراسات القرآنية';
@@ -25,19 +25,28 @@ export const SCHOOL_LD = { '@context': 'https://schema.org', ...ORGANIZATION };
 /** JSON for a <script type="application/ld+json">: every `<` becomes the JSON escape \u003c, so no value can close the tag. */
 export const ldJson = (data: unknown) => JSON.stringify(data).replace(/</g, '\\u003c');
 
-export const COURSES_LD = {
-  '@context': 'https://schema.org',
-  '@type': 'ItemList',
-  name: 'دورات مدرسة نور الأوصياء',
-  itemListElement: COURSES.map((c, i) => ({
-    '@type': 'ListItem',
-    position: i + 1,
-    item: {
-      '@type': 'Course',
-      name: c.name,
-      provider: ORGANIZATION,
-      inLanguage: 'ar',
-      ...(c.kindLabel ? { description: c.kindLabel } : {}),
-    },
-  })),
-};
+/**
+ * `Course` items only for the courses that take registrations now (published + open in the database). Running courses
+ * that do not take new students are left out, so search results never advertise a course nobody can join.
+ * Returns null when there is nothing to list (or the database could not be read): the page then prints no course data.
+ */
+export function coursesLd(open: { id: number; name: string; description: string | null }[]) {
+  if (open.length === 0) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'دورات مدرسة نور الأوصياء المفتوحة للتسجيل',
+    itemListElement: open.map((c, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: {
+        '@type': 'Course',
+        name: c.name,
+        url: `${ORIGIN}/register?course=${c.id}`,
+        provider: ORGANIZATION,
+        inLanguage: 'ar',
+        ...(c.description ? { description: c.description } : {}),
+      },
+    })),
+  };
+}

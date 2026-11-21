@@ -3,7 +3,7 @@ import test from 'node:test';
 import { hoursText, minutesText, triesLeftText } from '../lib/format';
 import { DEFAULT_MAIL_FROM, inviteEmail, loginCodeEmail, mailConfig } from '../lib/mail';
 import { readFileSync } from 'node:fs';
-import { COURSES_LD, ldJson, SCHOOL_LD } from '../lib/seo';
+import { coursesLd, ldJson, SCHOOL_LD } from '../lib/seo';
 
 test('counted nouns agree with the number and use Arabic-Indic digits', () => {
   assert.equal(minutesText(10), '١٠ دقائق');
@@ -40,7 +40,8 @@ test('JSON-LD cannot close its script tag, and still parses to the same data', (
   assert.ok(!out.includes('<'), out);
   assert.deepEqual(JSON.parse(out), data);
   assert.deepEqual(JSON.parse(ldJson(SCHOOL_LD)), SCHOOL_LD);
-  assert.deepEqual(JSON.parse(ldJson(COURSES_LD)), COURSES_LD);
+  const courses = coursesLd([{ id: 7, name: 'دورة <تجريبية>', description: null }]);
+  assert.deepEqual(JSON.parse(ldJson(courses)), courses);
 });
 
 test('the top strip stays a labelled landmark (merge cc3d137 had dropped it)', () => {

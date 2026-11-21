@@ -46,3 +46,7 @@ a:focus-visible, .btn:focus-visible { outline: 3px solid var(--k); outline-offse
   .card.course { transition: transform 0.2s ease, box-shadow 0.2s ease; }
   .card.course:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(11, 11, 12, 0.06), 0 18px 40px rgba(11, 11, 12, 0.12); }
 }
+
+/* Public course pages: «التسجيل مفتوح» + «سجّل» under a course name in the record table, and the home summary line. */
+.reg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+.open-sum { margin-top: 8px; font-size: 14.5px; max-width: 60ch; }
