@@ -94,6 +94,13 @@ tr.sel td { background: var(--y-soft); }
 .drawer .notify .btn { white-space: normal; text-align: center; }
 .drawer .notify .hint { margin: 0; font-size: 13px; color: var(--mute); line-height: 1.6; }
 .drawer .notify .hint.done { color: var(--ok); display: flex; gap: 6px; align-items: center; }
+/* «نسي الطالب كلمة المرور؟»: closed by default, under the decision form. */
+.drawer .reset { margin: 0 22px 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+.drawer .reset summary { cursor: pointer; font-weight: 600; font-size: 14px; min-height: 44px; display: flex; align-items: center; }
+.drawer .reset form, .drawer .reset .done { display: grid; gap: 10px; }
+.drawer .reset p { margin: 0; }
+.drawer .reset .hint { font-size: 13px; color: var(--mute); line-height: 1.6; }
+.drawer .reset .pw { font-size: 18px; letter-spacing: 1px; user-select: all; }
 
 
 @media (max-width: 900px) {

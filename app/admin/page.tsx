@@ -5,6 +5,7 @@ import { reviewAction } from '@/app/admin/actions';
 import { AdminShell } from '@/components/AdminShell';
 import { Icon } from '@/components/Icon';
 import { NotifyWhatsAppLink } from '@/components/NotifyWhatsApp';
+import { StudentResetForm } from '@/components/StudentResetForm';
 import { countRequests, getRequest, lastNotifiedAt, listRequests, type RequestDetail } from '@/lib/admin';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
@@ -271,6 +272,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                 </button>
               </div>
             </form>
+            <StudentResetForm key={open.id} requestId={open.id} />
           </section>
         ) : (
           <div className="card empty">اختر طلباً من القائمة لعرض تفاصيله وإجابات الاستبيان.</div>

@@ -4,7 +4,7 @@ import type { MetadataRoute } from 'next';
 // purpose: a crawler has to fetch it to see the tag.
 export default function robots(): MetadataRoute.Robots {
   return {
-    rules: { userAgent: '*', allow: '/', disallow: ['/admin', '/account'] },
+    rules: { userAgent: '*', allow: '/', disallow: ['/admin', '/account', '/healthz'] },
     sitemap: 'https://noor-alawsiya.com/sitemap.xml',
   };
 }
