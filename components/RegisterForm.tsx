@@ -6,7 +6,7 @@ import { registerAction, type RegisterState } from '@/app/actions';
 import { isMinorIn, MAX_NAME, MIN_PASSWORD, NO, normalizePhone, toYear, visibleQuestions, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse } from '@/lib/form-rules';
 import { Field, fieldProps } from './Field';
 import { Icon } from './Icon';
-import { Logo } from './SiteChrome';
+import { Logo } from './Logo';
 
 const STEPS = [
   { title: 'بيانات الطالب', sub: 'الاسم، سنة الميلاد، رقم الهاتف', lead: 'نطلب أقل ما يلزم للتواصل وفتح حساب الطالب.' },

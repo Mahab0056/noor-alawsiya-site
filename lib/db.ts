@@ -32,6 +32,9 @@ async function openPg(url: string): Promise<Db> {
   // bigint ids and count(*) arrive as text by default. Every id here is far below 2^53, so read them as numbers (PGlite does the same).
   pg.types.setTypeParser(20, Number);
   const pool = new pg.Pool({ connectionString: url, max: 10 });
+  // An idle connection dropped by the server (restart, failover) is an 'error' event on the pool. Without a listener it is
+  // an uncaught exception; the pool already discards that connection and opens a new one on the next query.
+  pool.on('error', (e: Error & { code?: string }) => console.error(`database: idle connection lost (${e.code ?? 'no code'})`));
   type Queryable = { query: (text: string, params?: unknown[]) => Promise<{ rows: unknown[] }> };
   const wrap = (q: Queryable, inTx: boolean): Db => ({
     query: async <T extends Row>(text: string, params?: unknown[]) => (await q.query(text, params)).rows as T[],
@@ -55,13 +58,18 @@ async function openPg(url: string): Promise<Db> {
   });
   const db = wrap(pool, false);
   // Several instances can start together: one holds the lock and migrates, the others wait and find nothing left to do.
-  const lock = await pool.connect();
   try {
-    await lock.query('select pg_advisory_lock(727001)');
-    await migrate(db);
-  } finally {
-    await lock.query('select pg_advisory_unlock(727001)').catch(() => {});
-    lock.release();
+    const lock = await pool.connect();
+    try {
+      await lock.query('select pg_advisory_lock(727001)');
+      await migrate(db);
+    } finally {
+      await lock.query('select pg_advisory_unlock(727001)').catch(() => {});
+      lock.release();
+    }
+  } catch (e) {
+    await pool.end().catch(() => {}); // getDb() will try again with a new pool: do not leave this one open
+    throw e;
   }
   return db;
 }
@@ -112,7 +120,15 @@ async function open(): Promise<Db> {
 const holder = globalThis as unknown as { __noorDb?: Promise<Db> };
 
 export function getDb(): Promise<Db> {
-  holder.__noorDb ??= open();
+  if (!holder.__noorDb) {
+    const opening = open();
+    holder.__noorDb = opening;
+    // A failed first connection (the database restarting while the site starts) must not stick: forget it, so the next
+    // request tries again. Before this, every request kept failing until the whole site was restarted.
+    opening.catch(() => {
+      if (holder.__noorDb === opening) holder.__noorDb = undefined;
+    });
+  }
   return holder.__noorDb;
 }
 

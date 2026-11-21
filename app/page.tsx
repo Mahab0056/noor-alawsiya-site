@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { CourseCard, TeacherGrid } from '@/components/Cards';
 import { Icon } from '@/components/Icon';
 import { JsonLd } from '@/components/JsonLd';
+import { RegistrationCta } from '@/components/RegistrationState';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { ar, CONTACT, countOf, COURSES, DONE_COURSES, HOME_COURSES, MAHFAL_COURSES, OPEN_COURSES, TEACHERS } from '@/lib/data';
 import type { IconName } from '@/lib/icons';
@@ -122,7 +123,7 @@ export default function Home() {
             <div className="sec-h">
               <div>
                 <p className="eye">الدورات القائمة</p>
-                <h2>{countOf(OPEN_COURSES.length, 'دورات', 'دورة')} مفتوحة الآن</h2>
+                <h2>{countOf(OPEN_COURSES.length, 'دورات', 'دورة')} قائمة الآن</h2>
               </div>
             </div>
             <div className="g3">
@@ -228,10 +229,7 @@ export default function Home() {
         <section className="sec" style={{ paddingBottom: 0 }}>
           <div className="wrap">
             <div className="cta">
-              <div>
-                <h2>التسجيل مفتوح في الدورات القائمة</h2>
-                <p>سجّل من الموقع وتابع طلبك من حسابك، أو راسل المدرسة على واتساب.</p>
-              </div>
+              <RegistrationCta />
               <div className="sp">
                 <Link className="btn y" href="/register">
                   سجّل الآن

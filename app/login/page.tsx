@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { LoginForm } from '@/components/LoginForms';
 import { Logo } from '@/components/SiteChrome';
+import { CONTACT } from '@/lib/data';
 import { currentStudent } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'دخول الطلاب', description: 'ادخل برقم هاتفك وكلمة المرور لمتابعة طلب التسجيل.', robots: { index: false, follow: false } };
@@ -18,6 +19,13 @@ export default function LoginPage() {
         <Suspense fallback={null}>
           <SignedOutOnly />
         </Suspense>
+        <p className="alt">
+          نسيت كلمة المرور؟{' '}
+          <a href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
+            راسل إدارة المدرسة على واتساب
+          </a>{' '}
+          لتصلك كلمة مرور مؤقتة على رقمك المسجّل.
+        </p>
         <p className="alt">
           ليس لديك حساب؟ <Link href="/register">سجّل في دورة</Link>
         </p>

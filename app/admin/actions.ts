@@ -10,7 +10,10 @@ import { addQuestion, moveQuestion, recordNotified, reviewRequest, setQuestionAc
 import { getDb } from '@/lib/db';
 import { triesLeftText } from '@/lib/format';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
+import { appOrigin } from '@/lib/mail';
 import { clientIp, endSession, requireAdmin, startSession } from '@/lib/session';
+import { resetStudentPassword, tempPasswordMessage } from '@/lib/student-reset';
+import { DEFAULT_ORIGIN, whatsappLink, type NotifyRecipient } from '@/lib/whatsapp';
 
 // Every action below checks the admin session itself. A Server Action is a public endpoint.
 
@@ -91,6 +94,25 @@ export async function notifiedAction(requestId: unknown) {
   const admin = await requireAdmin();
   if (typeof requestId !== 'number' || !Number.isSafeInteger(requestId) || requestId <= 0) return;
   if (await recordNotified(await getDb(), admin.id, requestId)) refresh();
+}
+
+export type StudentResetState = { password: string; link: string | null; to: NotifyRecipient } | { error: string } | undefined;
+
+/**
+ * «كلمة مرور مؤقتة»: for the student behind request `id`. The password comes back once, in this answer only (never in a
+ * URL, a log or the database), with a prepared wa.me link to the number on file.
+ */
+export async function studentResetAction(_prev: StudentResetState, form: FormData): Promise<StudentResetState> {
+  const admin = await requireAdmin();
+  const requestId = id(form);
+  if (!requestId) return { error: 'تعذّر تنفيذ الطلب. حدّث الصفحة وحاول مرة أخرى.' };
+  const reset = await resetStudentPassword(await getDb(), admin.id, requestId);
+  if (!reset) return { error: 'لم يُعثر على هذا الطلب. حدّث الصفحة.' };
+  let origin = DEFAULT_ORIGIN;
+  try {
+    origin = appOrigin();
+  } catch {}
+  return { password: reset.password, to: reset.to, link: reset.number ? whatsappLink(reset.number, tempPasswordMessage(reset.password, origin)) : null };
 }
 
 export type QuestionState ={ error?: string; saved: number } | undefined;

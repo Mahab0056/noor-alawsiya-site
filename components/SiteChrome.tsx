@@ -1,7 +1,11 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { Icon } from './Icon';
+import { Logo } from './Logo';
+import { RegistrationStrip } from './RegistrationState';
 import { CONTACT } from '@/lib/data';
+
+// Logo lives in ./Logo so client components can use it without pulling in RegistrationStrip (it reads the database).
+export { Logo };
 
 type NavKey = 'home' | 'courses' | 'privacy' | 'account';
 
@@ -11,17 +15,6 @@ const NAV: { key: NavKey; href: string; label: string }[] = [
 ];
 
 const EXT = { target: '_blank', rel: 'noopener noreferrer' } as const;
-
-export function Logo({ mark = 'black', sub = 'للدراسات القرآنية' }: { mark?: 'black' | 'yellow'; sub?: string }) {
-  return (
-    <Link className="logo" href="/">
-      <Image src={`/img/mark-${mark}.png`} alt="" width={37} height={48} />
-      <span>
-        نور الأوصياء<small>{sub}</small>
-      </span>
-    </Link>
-  );
-}
 
 export function SiteHeader({ current }: { current?: NavKey }) {
   return (
@@ -41,7 +34,7 @@ export function SiteHeader({ current }: { current?: NavKey }) {
               <span className="num">{CONTACT.phone}</span>
             </span>
           </a>
-          <span className="sp">التسجيل مفتوح للدورات الحالية</span>
+          <RegistrationStrip />
         </div>
       </aside>
       <header className="nav">
