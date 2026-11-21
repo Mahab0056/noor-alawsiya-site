@@ -5,18 +5,17 @@ import { reviewAction } from '@/app/admin/actions';
 import { AdminShell } from '@/components/AdminShell';
 import { Icon } from '@/components/Icon';
 import { NotifyWhatsAppLink } from '@/components/NotifyWhatsApp';
-import { countRequests, getRequest, lastNotifiedAt, listRequests, type RequestDetail } from '@/lib/admin';
+import { countRequests, getRequest, lastNotifiedAt, listCourseFilterOptions, listRequests, oldestPendingAt, type RequestDetail } from '@/lib/admin';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { formatDate, formatDateTime, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
 import { appOrigin } from '@/lib/mail';
+import { defaultSort, parseQueueView, pendingSummary, queueHref, STATUSES, WAIT_TAG, waitBadgeText, waitLevel } from '@/lib/queue';
 import type { RegistrationStatus } from '@/lib/registration';
 import { requireAdmin } from '@/lib/session';
 import { decisionMessage, DEFAULT_ORIGIN, notifyRecipient, whatsappLink } from '@/lib/whatsapp';
 
 export const metadata: Metadata = { title: 'طلبات التسجيل', robots: { index: false, follow: false } };
-
-const STATUSES: RegistrationStatus[] = ['pending', 'accepted', 'rejected'];
 
 export default function AdminPage({ searchParams }: PageProps<'/admin'>) {
   return (
@@ -74,6 +73,16 @@ function StatusTag({ status }: { status: RegistrationStatus }) {
   );
 }
 
+/** How long a pending request has waited: neutral, amber from 24 h, red from 48 h (lib/queue.ts). */
+function WaitTag({ createdAt, now }: { createdAt: Date; now: Date }) {
+  return (
+    <span className={`tag ${WAIT_TAG[waitLevel(createdAt, now)]}`}>
+      <i />
+      {waitBadgeText(createdAt, now)}
+    </span>
+  );
+}
+
 /** A request made from «حسابي» by a student who already has an account: same student row, no new personal data. */
 function ExistingTag() {
   return <span className="tag known">طالب مسجّل</span>;
@@ -81,24 +90,41 @@ function ExistingTag() {
 
 async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParams'>) {
   const admin = await requireAdmin();
+  const now = new Date(); // after requireAdmin: this render is per request, so the waiting times are current
   const params = await searchParams;
-  const status = STATUSES.find((s) => s === params.status) ?? 'pending';
   const openId = typeof params.id === 'string' && /^\d{1,15}$/.test(params.id) ? Number(params.id) : null;
 
   const db = await getDb();
-  const [counts, rows, open, notifiedAt] = await Promise.all([
+  const courses = await listCourseFilterOptions(db);
+  const asked = parseQueueView(params);
+  // An unknown course id shows every course rather than an empty list that looks like «no requests».
+  const view = { ...asked, courseId: courses.some((c) => c.id === asked.courseId) ? asked.courseId : null };
+  const status = view.status;
+  const [counts, tabCounts, oldest, rows, open, notifiedAt] = await Promise.all([
     countRequests(db),
-    listRequests(db, status),
+    view.courseId ? countRequests(db, view.courseId) : null,
+    oldestPendingAt(db),
+    listRequests(db, status, { courseId: view.courseId, sort: view.sort }),
     openId ? getRequest(db, openId) : null,
     openId ? lastNotifiedAt(db, openId) : null,
   ]);
+  const inTabs = tabCounts ?? counts;
+  const oldestLevel = oldest ? waitLevel(oldest, now) : 'fresh';
 
   return (
     <AdminShell admin={admin} current="requests" pending={counts.pending}>
       <div className="ph">
         <div>
           <h1>طلبات التسجيل</h1>
-          <p>{counts.pending > 0 ? `${ar(counts.pending)} بانتظار مراجعتك` : 'لا طلبات بانتظار المراجعة'}</p>
+          <p className="queue-sum">
+            {pendingSummary(counts.pending, oldest, now)}
+            {oldestLevel !== 'fresh' ? (
+              <span className={`tag ${WAIT_TAG[oldestLevel]}`}>
+                <i />
+                {oldestLevel === 'overdue' ? 'تجاوز ٤٨ ساعة' : 'تجاوز ٢٤ ساعة'}
+              </span>
+            ) : null}
+          </p>
         </div>
       </div>
 
@@ -120,11 +146,36 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
         <div className="card">
           <nav className="tabs" aria-label="حالة الطلب">
             {STATUSES.map((s) => (
-              <Link key={s} href={`/admin?status=${s}`} className={s === status ? 'on' : undefined} aria-current={s === status ? 'page' : undefined}>
-                {STATUS_LABEL[s]} <b>{ar(counts[s])}</b>
+              <Link key={s} href={queueHref({ status: s, courseId: view.courseId, sort: defaultSort(s) })} className={s === status ? 'on' : undefined} aria-current={s === status ? 'page' : undefined}>
+                {STATUS_LABEL[s]} <b>{ar(inTabs[s])}</b>
               </Link>
             ))}
           </nav>
+          {/* A plain GET form: works without JavaScript, and the address can be bookmarked or shared between the admins. */}
+          <form className="filt" action="/admin" method="get" aria-label="تصفية الطلبات">
+            <input type="hidden" name="status" value={status} />
+            <div className="field">
+              <label htmlFor="f-course">الدورة</label>
+              <select className="inp" id="f-course" name="course" defaultValue={view.courseId ? String(view.courseId) : ''}>
+                <option value="">كل الدورات</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={String(c.id)}>
+                    {c.pending > 0 ? `${c.name} (${ar(c.pending)} قيد المراجعة)` : c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label htmlFor="f-sort">الترتيب</label>
+              <select className="inp" id="f-sort" name="sort" defaultValue={view.sort}>
+                <option value="oldest">الأقدم أولاً</option>
+                <option value="newest">الأحدث أولاً</option>
+              </select>
+            </div>
+            <button className="btn w" type="submit">
+              عرض
+            </button>
+          </form>
           {rows.length === 0 ? (
             <p className="empty">لا توجد طلبات في هذه القائمة.</p>
           ) : (
@@ -162,14 +213,12 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                     </td>
                     <td role="cell">{r.course}</td>
                     <td role="cell" className="hm mute">
-                      {formatDate(r.createdAt)}
+                      {r.status === 'pending' ? formatDateTime(r.createdAt) : formatDate(r.createdAt)}
                     </td>
-                    <td role="cell">
-                      <StatusTag status={r.status} />
-                    </td>
+                    <td role="cell">{r.status === 'pending' ? <WaitTag createdAt={r.createdAt} now={now} /> : <StatusTag status={r.status} />}</td>
                     <td role="cell">
                       <div className="tacts">
-                        <Link className="btn w sm" href={`/admin?status=${status}&id=${r.id}#request`} aria-label={`عرض طلب ${r.studentName}`}>
+                        <Link className="btn w sm" href={`${queueHref(view, { id: r.id })}#request`} aria-label={`عرض طلب ${r.studentName}`}>
                           عرض
                         </Link>
                       </div>
@@ -238,7 +287,13 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
               <div>
                 <dt>تاريخ الطلب</dt>
                 <dd>
-                  {formatDate(open.createdAt)}
+                  {open.status === 'pending' ? (
+                    <>
+                      {formatDateTime(open.createdAt)} <WaitTag createdAt={open.createdAt} now={now} />
+                    </>
+                  ) : (
+                    formatDate(open.createdAt)
+                  )}
                   {open.reviewedAt ? ` · رُوجع في ${formatDate(open.reviewedAt)}` : ''}
                 </dd>
               </div>
@@ -257,6 +312,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
             <form className="ft" action={reviewAction}>
               <input type="hidden" name="id" value={open.id} />
               <input type="hidden" name="from" value={status} />
+              {view.courseId ? <input type="hidden" name="course" value={view.courseId} /> : null}
               <label className="lbl" htmlFor="note">
                 ملاحظة للطالب (اختياري)
               </label>

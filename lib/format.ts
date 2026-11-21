@@ -15,4 +15,5 @@ export const arDigits = (n: number) => DIGITS.format(n);
 const counted = (n: number, one: string, two: string, few: string, many: string) => (n === 1 ? one : n === 2 ? two : `${arDigits(n)} ${n >= 3 && n <= 10 ? few : many}`);
 export const minutesText = (n: number) => counted(n, 'دقيقة واحدة', 'دقيقتين', 'دقائق', 'دقيقة');
 export const hoursText = (n: number) => counted(n, 'ساعة واحدة', 'ساعتين', 'ساعات', 'ساعة');
+export const daysText = (n: number) => counted(n, 'يوم واحد', 'يومين', 'أيام', 'يوماً');
 export const triesLeftText = (n: number) => (n <= 0 ? 'لم تبقَ محاولات' : n === 1 ? 'بقيت محاولة واحدة' : n === 2 ? 'بقيت محاولتان' : `بقيت ${arDigits(n)} ${n <= 10 ? 'محاولات' : 'محاولة'}`);
