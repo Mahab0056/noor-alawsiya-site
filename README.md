@@ -40,6 +40,18 @@ ADMIN_PASSWORD='…' npm run create-admin -- "الاسم" email@example.com supe
 
 لا تُدخل بيانات طلاب حقيقية في القاعدة المحلية.
 
+### فحص صلاحيات الـ Server Actions (في CI)
+
+وظيفة `actions-e2e` في `.github/workflows/ci.yml` تبني الموقع، وتشغّل `next start` على Postgres مؤقت ببيانات وهمية (`scripts/e2e/setup.ts`)، ثم تنادي كل Server Action في `app/**/actions.ts` كما يناديها المتصفح (`scripts/e2e/actions-probe.mjs`): مشرف مقابل مدير أعلى، طالب مقابل مشرف، بلا جلسة، من موقع آخر، وحدود المحاولات. لكل action فحص إيجابي يثبت أن الطلب وصل فعلاً، وأي action جديد بلا فحص أو سبب مكتوب يُفشل الوظيفة. لتشغيلها محلياً على قاعدة فارغة مؤقتة (لا تشغّلها على قاعدة حقيقية، فهي تغيّر البيانات):
+
+```bash
+npm run build
+DATABASE_URL=postgres://…/noor_e2e APP_SECRET=… npm run seed
+DATABASE_URL=… APP_SECRET=… npx tsx --conditions=react-server scripts/e2e/setup.ts /tmp/e2e-tokens.json
+DATABASE_URL=… APP_SECRET=… npx next start -H 127.0.0.1 -p 3000 &
+DATABASE_URL=… node scripts/e2e/actions-probe.mjs http://127.0.0.1:3000 /tmp/e2e-tokens.json
+```
+
 ## المشرفون والدعوات
 
 - دوران: **مدير أعلى** (`super_admin`) يفعل كل شيء ويدعو المشرفين ويوقفهم من `/admin/admins`، و**مشرف** يراجع الطلبات ويعدّل الاستبيان.

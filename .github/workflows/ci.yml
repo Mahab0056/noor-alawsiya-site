@@ -118,3 +118,82 @@ jobs:
         env:
           TEST_DATABASE_URL: postgres://postgres@localhost:5432/noor_test
         run: npx tsx --conditions=react-server --test --test-concurrency=1 tests/*.test.ts
+
+  # Every Server Action in app/**/actions.ts called over HTTP the way the browser does, against `next start` and a
+  # throwaway Postgres with invented data: staff vs super admin, student vs admin, no session, cross-origin, throttles,
+  # each with a positive control. Action ids are read from this build's manifest. See scripts/e2e/actions-probe.mjs.
+  actions-e2e:
+    name: Server Action access probes (next start + Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    permissions:
+      contents: read
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+    services:
+      postgres:
+        image: postgres:18@sha256:e754b839f447639b7004895f4d8a4bfcb4e9dbe3a1bc035f27f646562a16fd61 # postgres:18, 19/11/2026
+        env:
+          # Throwaway container that lives only for this job, reachable only from the runner: no password.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: noor_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d noor_e2e"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # No DATABASE_URL: the build must not need a database.
+      - name: Build
+        run: npm run build
+
+      # A fresh random APP_SECRET for this run only. Masked, never stored.
+      - name: Generate throwaway APP_SECRET
+        run: |
+          s="$(openssl rand -hex 32)"
+          echo "::add-mask::$s"
+          echo "APP_SECRET=$s" >> "$GITHUB_ENV"
+
+      - name: Invented data (courses, 2 admins, 2 students, sessions)
+        env:
+          DATABASE_URL: postgres://postgres@localhost:5432/noor_e2e
+        run: |
+          npm run seed
+          npx tsx --conditions=react-server scripts/e2e/setup.ts "$RUNNER_TEMP/e2e-tokens.json"
+
+      - name: Start next start
+        env:
+          DATABASE_URL: postgres://postgres@localhost:5432/noor_e2e
+        run: |
+          nohup node node_modules/next/dist/bin/next start -H 127.0.0.1 -p 3000 > "$RUNNER_TEMP/next.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://127.0.0.1:3000/healthz; then echo "up after ~$((i / 2)) s"; exit 0; fi
+            sleep 0.5
+          done
+          echo "next start did not answer /healthz in 30 s"; cat "$RUNNER_TEMP/next.log"; exit 1
+
+      - name: Probe every Server Action (fails on any FAIL)
+        env:
+          DATABASE_URL: postgres://postgres@localhost:5432/noor_e2e
+        run: node scripts/e2e/actions-probe.mjs http://127.0.0.1:3000 "$RUNNER_TEMP/e2e-tokens.json"
+
+      - name: Server log (on failure)
+        if: failure()
+        run: tail -n 200 "$RUNNER_TEMP/next.log" || true
