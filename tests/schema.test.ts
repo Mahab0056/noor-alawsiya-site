@@ -31,7 +31,7 @@ async function course(name = 'دورة تجريبية') {
 
 test('migrations apply cleanly and are recorded', async () => {
   const rows = await db.query<{ name: string }>('select name from schema_migrations order by name');
-  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql', '0004_guardian_not_blank.sql', '0005_admin_invites.sql', '0006_admin_email_codes.sql', '0007_second_course.sql']);
+  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql', '0004_guardian_not_blank.sql', '0005_admin_invites.sql', '0006_admin_email_codes.sql', '0007_second_course.sql', '0011_progress_attendance.sql']);
 });
 
 test('guardian name and phone cannot be blank strings', async () => {

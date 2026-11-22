@@ -8,6 +8,7 @@ import { createSession, destroySession, readSession, type SessionKind } from './
 import { pickClientIp } from './client-ip';
 import { SESSION_COOKIE } from './cookie-names';
 import { getDb } from './db';
+import { isTeacherRole } from './progress';
 
 /**
  * Session cookies. Every page and every Server Action that touches private data calls
@@ -58,7 +59,17 @@ export async function requireStudent() {
   return (await currentStudent()) ?? redirect('/login');
 }
 
+/**
+ * Every admin screen except «الحضور». A teacher (0011) is sent to «الحضور»: they must never reach the requests, the
+ * questionnaire or any pupil's phone, so this one gate keeps every existing page and action closed to them.
+ */
 export async function requireAdmin() {
+  const admin = (await currentAdmin()) ?? redirect('/admin/login');
+  return isTeacherRole(admin.role) ? redirect('/admin/progress') : admin;
+}
+
+/** «الحضور» only: any active admin, teachers included. lib/progress.ts then checks the course against the database. */
+export async function requireRecorder() {
   return (await currentAdmin()) ?? redirect('/admin/login');
 }
 

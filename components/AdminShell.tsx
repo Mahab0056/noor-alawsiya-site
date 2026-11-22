@@ -3,15 +3,22 @@ import type { ReactNode } from 'react';
 import { adminLogoutAction } from '@/app/admin/actions';
 import type { AdminProfile } from '@/lib/accounts';
 import { ar } from '@/lib/data';
-import { adminTotpEnabled } from '@/lib/flags';
+import { adminTotpEnabled, progressEnabled } from '@/lib/flags';
 import { Icon } from './Icon';
 import { Logo } from './SiteChrome';
 
-type Key = 'requests' | 'courses' | 'form' | 'admins';
+type Key = 'requests' | 'courses' | 'form' | 'admins' | 'progress';
 
 /** Side navigation and top bar around every admin screen. Lists only the screens that exist. */
 export function AdminShell({ admin, current, pending, children }: { admin: AdminProfile; current: Key; pending: number; children: ReactNode }) {
-  const links = (
+  const progress = progressEnabled() ? (
+    <Link href="/admin/progress" className={current === 'progress' ? 'on' : undefined} aria-current={current === 'progress' ? 'page' : undefined}>
+      <Icon name="cal" />
+      الحضور
+    </Link>
+  ) : null;
+  // A teacher (0011) has «الحضور» and nothing else.
+  const links = admin.role === 'teacher' ? progress : (
     <>
       <Link href="/admin" className={current === 'requests' ? 'on' : undefined} aria-current={current === 'requests' ? 'page' : undefined}>
         <Icon name="inbox" />
@@ -24,6 +31,7 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
           الدورات
         </Link>
       ) : null}
+      {progress}
       <Link href="/admin/form" className={current === 'form' ? 'on' : undefined} aria-current={current === 'form' ? 'page' : undefined}>
         <Icon name="list" />
         استبيان التسجيل
@@ -48,7 +56,7 @@ export function AdminShell({ admin, current, pending, children }: { admin: Admin
           <div>
             <b>{admin.name}</b>
             <br />
-            <span>{adminTotpEnabled() ? 'تحقق بخطوتين مفعّل' : 'الدخول برمز البريد'}</span>
+            <span>{admin.role === 'teacher' ? 'أستاذ' : adminTotpEnabled() ? 'تحقق بخطوتين مفعّل' : 'الدخول برمز البريد'}</span>
           </div>
         </div>
       </aside>

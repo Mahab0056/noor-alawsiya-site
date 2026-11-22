@@ -55,8 +55,8 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', 
 export const INVITE_SUBJECT = 'دعوة لإدارة موقع نور الأوصياء';
 
 /** Arabic, right-to-left invitation with a plain-text part. The link is the only variable content. */
-export function inviteEmail(link: string, role: 'super_admin' | 'admin', hours: number) {
-  const roleText = role === 'super_admin' ? 'مديراً أعلى' : 'مشرفاً';
+export function inviteEmail(link: string, role: 'super_admin' | 'admin' | 'teacher', hours: number) {
+  const roleText = role === 'super_admin' ? 'مديراً أعلى' : role === 'teacher' ? 'أستاذاً يسجّل حضور حلقاته' : 'مشرفاً';
   const what = adminTotpEnabled() ? 'لتضع كلمة المرور وتفعّل التحقق بخطوتين بتطبيق المصادقة على هاتفك' : 'لتكتب اسمك وتضع كلمة المرور';
   const text = [
     'السلام عليكم،',

@@ -10,7 +10,8 @@ function Status({ state }: { state: TeamState }) {
   return null;
 }
 
-export function InviteAdminForm() {
+/** `teachers`: offer the «أستاذ» role (only while PROGRESS_TRACKING is on). */
+export function InviteAdminForm({ teachers = false }: { teachers?: boolean }) {
   const [state, action, pending] = useActionState(inviteAction, undefined);
   // Controlled, so what was typed stays in place when the server answers with an error.
   const [email, setEmail] = useState('');
@@ -24,6 +25,7 @@ export function InviteAdminForm() {
       <Field id="role" label="الدور">
         <select {...fieldProps('role')} value={role} onChange={(e) => setRole(e.target.value)}>
           <option value="staff">مشرف: يراجع الطلبات ويعدّل الاستبيان</option>
+          {teachers ? <option value="teacher">أستاذ: يسجّل حضور حلقاته فقط، ولا يرى الطلبات ولا الأرقام</option> : null}
           <option value="super_admin">مدير أعلى: كل ما سبق، ويدعو المشرفين ويوقفهم</option>
         </select>
       </Field>

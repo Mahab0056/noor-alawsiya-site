@@ -6,7 +6,9 @@ import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { courseRequestContext, MAX_ACCOUNT_REQUESTS_PER_DAY } from '@/lib/course-requests';
 import { ar, CONTACT } from '@/lib/data';
 import { getDb } from '@/lib/db';
+import { progressEnabled } from '@/lib/flags';
 import { formatDate, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
+import { ATTENDANCE_LABEL, ATTENDANCE_TAG, baghdadToday, formatDay, pupilProgress, type PupilCourse } from '@/lib/progress';
 import { listStudentRegistrations, type RegistrationStatus } from '@/lib/registration';
 import { requireStudent } from '@/lib/session';
 
@@ -39,7 +41,12 @@ export default function AccountPage({ searchParams }: PageProps<'/account'>) {
 async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchParams'>) {
   const student = await requireStudent();
   const db = await getDb();
-  const [requests, ctx, params] = await Promise.all([listStudentRegistrations(db, student.id), courseRequestContext(db, student.id), searchParams]);
+  const [requests, ctx, params, progress] = await Promise.all([
+    listStudentRegistrations(db, student.id),
+    courseRequestContext(db, student.id),
+    searchParams,
+    progressEnabled() ? pupilProgress(db, student.id) : [],
+  ]);
   const choices = ctx?.courses.filter((c) => c.taken === null) ?? [];
   return (
     <>
@@ -78,6 +85,9 @@ async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchPara
             ) : null}
           </article>
         ))}
+        {progress.map((p) => (
+          <Progress key={p.courseId} p={p} firstName={student.fullName.trim().split(/\s+/)[0]} />
+        ))}
         {ctx ? (
           <section className="card creq-card" aria-labelledby="new-request">
             <h2 id="new-request">اطلب دورة ثانية</h2>
@@ -106,5 +116,44 @@ async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchPara
         </p>
       </div>
     </>
+  );
+}
+
+/** «الحضور والملاحظات» for one accepted course: the pupil's own sessions, newest first. Words, not scores. */
+function Progress({ p, firstName }: { p: PupilCourse; firstName: string }) {
+  const total = p.present + p.absent + p.excused;
+  const today = baghdadToday();
+  const headingId = `pg-${p.courseId}`;
+  return (
+    <section className="card pg" aria-labelledby={headingId}>
+      <div className="pg-hd">
+        <h2 id={headingId}>الحضور والملاحظات: {p.course}</h2>
+        {total === 0 ? (
+          <p className="mute">لم يُسجَّل حضور بعد. يسجّل الأستاذ الحضور بعد كل حلقة، ويظهر هنا أول ما يسجّله. لا شيء مطلوب منك الآن.</p>
+        ) : (
+          <p className="pg-sum">
+            حضر {firstName} {ar(p.present)} من {ar(total)} {total === 1 ? 'حلقة مسجّلة' : 'حلقات مسجّلة'}
+            {p.absent ? `، وغاب ${ar(p.absent)}` : ''}
+            {p.excused ? `، ومجاز في ${ar(p.excused)}` : ''}.
+          </p>
+        )}
+      </div>
+      {p.sessions.length ? (
+        <ul className="pg-list">
+          {p.sessions.map((s) => (
+            <li key={s.day}>
+              <span className={`tag ${ATTENDANCE_TAG[s.status]}`}>{ATTENDANCE_LABEL[s.status]}</span>
+              <span>{formatDay(s.day, today)}</span>
+              {s.note ? (
+                <p className="pg-note">
+                  <b>ملاحظة الأستاذ:</b> {s.note}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      <p className="pg-ft mute">هذه المتابعة يراها الطالب وولي أمره والأستاذ وإدارة المدرسة فقط.{p.absent ? ' إن كان هناك ظرف، أخبر الأستاذ أو إدارة المدرسة.' : ''}</p>
+    </section>
   );
 }

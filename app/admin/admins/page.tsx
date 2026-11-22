@@ -4,6 +4,7 @@ import { AdminShell } from '@/components/AdminShell';
 import { InviteAdminForm, RowAction } from '@/components/TeamForms';
 import { countRequests } from '@/lib/admin';
 import { getDb } from '@/lib/db';
+import { progressEnabled } from '@/lib/flags';
 import { formatDate } from '@/lib/format';
 import { listAdmins, type AdminListRow } from '@/lib/invites';
 import { requireSuperAdmin } from '@/lib/session';
@@ -18,7 +19,7 @@ export default function AdminsPage() {
   );
 }
 
-const ROLE: Record<AdminListRow['role'], string> = { super_admin: 'مدير أعلى', owner: 'مشرف', staff: 'مشرف' };
+const ROLE: Record<AdminListRow['role'], string> = { super_admin: 'مدير أعلى', owner: 'مشرف', staff: 'مشرف', teacher: 'أستاذ' };
 const STATUS: Record<AdminListRow['status'], { label: string; tag: string }> = {
   active: { label: 'مفعّل', tag: 'ok' },
   pending: { label: 'بانتظار قبول الدعوة', tag: 'warn' },
@@ -90,7 +91,7 @@ async function Team() {
         </div>
         <div className="card q">
           <h2 className="qh">دعوة مشرف</h2>
-          <InviteAdminForm />
+          <InviteAdminForm teachers={progressEnabled()} />
         </div>
       </div>
     </AdminShell>

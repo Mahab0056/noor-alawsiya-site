@@ -2,6 +2,7 @@
 
 import { refresh } from 'next/cache';
 import { getDb } from '@/lib/db';
+import { progressEnabled } from '@/lib/flags';
 import { InviteError, inviteAdmin, resendInvite, revokeInvite, setAdminDisabled, unlockAdmin } from '@/lib/invites';
 import { MailConfigError, mailConfig } from '@/lib/mail';
 import { requireSuperAdmin } from '@/lib/session';
@@ -37,7 +38,9 @@ function explain(e: unknown): string {
 
 export async function inviteAction(_prev: TeamState, form: FormData): Promise<TeamState> {
   const admin = await requireSuperAdmin();
-  const role = text(form, 'role') === 'super_admin' ? 'super_admin' : 'staff';
+  const asked = text(form, 'role');
+  // «أستاذ» only while the progress feature is on; anything else unknown falls back to the least power.
+  const role = asked === 'super_admin' ? 'super_admin' : asked === 'teacher' && progressEnabled() ? 'teacher' : 'staff';
   try {
     await inviteAdmin(await getDb(), { email: text(form, 'email'), role, actorId: admin.id }, { mail: mailConfig() });
   } catch (e) {

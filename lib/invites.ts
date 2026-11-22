@@ -25,8 +25,9 @@ const MAX_FAILS_PER_IP = 20; // per 15 minutes, as for logins
 const MAX_FAILS_PER_INVITE = 5; // wrong TOTP codes on one invite, per 15 minutes
 const WINDOW = '15 minutes';
 
-export type AdminRole = 'super_admin' | 'owner' | 'staff';
-export type InviteRole = 'super_admin' | 'staff';
+/** 'teacher' (0011): records attendance for assigned courses only, and sees no other admin screen (lib/session.ts). */
+export type AdminRole = 'super_admin' | 'owner' | 'staff' | 'teacher';
+export type InviteRole = 'super_admin' | 'staff' | 'teacher';
 
 export class InviteError extends Error {
   constructor(
@@ -98,7 +99,7 @@ export async function resendInvite(db: Db, actorId: number, adminId: number, dep
     );
     if (!a) throw new InviteError('not-found', 'No such admin.');
     if (a.confirmed && !opts.reset) throw new InviteError('not-pending', 'This admin is already active.');
-    const role: InviteRole = a.role === 'super_admin' ? 'super_admin' : 'staff';
+    const role: InviteRole = a.role === 'super_admin' || a.role === 'teacher' ? a.role : 'staff';
     await resetToPending(t, adminId, role);
     return issue(t, adminId, role, actorId, a.confirmed ? 'admin.reinvite' : 'admin.invite.resend', a.email, deps);
   });
@@ -123,7 +124,7 @@ async function issue(t: Db, adminId: number, role: InviteRole, actorId: number |
   const inviteId = Number(row.id);
   await audit(t, actorId, action, `admin:${adminId}`, { invite: inviteId, role });
   const link = `${deps.mail.origin}/admin/invite/${token}`;
-  await sendMail(deps.mail, { to: email, ...inviteEmail(link, role === 'super_admin' ? 'super_admin' : 'admin', INVITE_HOURS) }, deps.fetchImpl);
+  await sendMail(deps.mail, { to: email, ...inviteEmail(link, role === 'staff' ? 'admin' : role, INVITE_HOURS) }, deps.fetchImpl);
   return { adminId, inviteId };
 }
 

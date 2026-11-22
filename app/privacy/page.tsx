@@ -1,13 +1,17 @@
 import type { Metadata } from 'next';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { CONTACT } from '@/lib/data';
+import { progressEnabled } from '@/lib/flags';
 
 export const metadata: Metadata = {
   title: 'سياسة الخصوصية',
   description: 'ما البيانات التي يجمعها موقع مدرسة نور الأوصياء، ولماذا، وكيف تُحفظ وتُحذف.',
 };
 
-const SECTIONS: { title: string; items: string[] }[] = [
+// Only while «المتابعة» is on (lib/flags.ts): the site then also keeps attendance and a teacher's note per session.
+const PROGRESS_ITEM = 'بعد قبول الطالب في دورة: حضوره في كل حلقة (حاضر أو غائب أو مجاز) وملاحظة قصيرة من الأستاذ عن الدرس، يراها الطالب وولي أمره في «حسابي».';
+
+const BASE_SECTIONS: { title: string; items: string[] }[] = [
   {
     title: 'ما الذي نجمعه عند التسجيل',
     items: [
@@ -40,7 +44,11 @@ const SECTIONS: { title: string; items: string[] }[] = [
   },
 ];
 
+const sections = () =>
+  progressEnabled() ? BASE_SECTIONS.map((s, i) => (i === 0 ? { ...s, items: [...s.items.slice(0, 3), PROGRESS_ITEM, ...s.items.slice(3)] } : s)) : BASE_SECTIONS;
+
 export default function PrivacyPage() {
+  const SECTIONS = sections();
   return (
     <>
       <SiteHeader current="privacy" />
