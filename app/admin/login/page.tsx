@@ -13,7 +13,7 @@ export default function AdminLoginPage() {
       <div className="card box">
         <Logo sub="لوحة الإدارة" />
         <h1>دخول الإدارة</h1>
-        <p className="sub">للمشرفين فقط. الدخول بكلمة المرور ورمز التحقق معاً.</p>
+        <p className="sub">للمشرفين فقط. نرسل رمز الدخول إلى بريدك الإلكتروني.</p>
         <Suspense fallback={null}>
           <SignedOutOnly />
         </Suspense>
