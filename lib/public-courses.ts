@@ -20,7 +20,7 @@ export type PublicCourses = {
   /** Published database courses that are not in the record (added in the panel). */
   extra: (Course & { id: number; accepting: boolean })[];
   /** Every course that takes registrations now, record or new, for the JSON-LD and the counts. */
-  open: { id: number; name: string; description: string | null }[];
+  open: { id: number; name: string; description: string | null; teacher: string }[];
 };
 
 /** Names compare after trimming and collapsing spaces, so a stray space in the panel still matches. */
@@ -49,7 +49,7 @@ export function matchCourses(record: Course[], rows: DbCourseRow[]): PublicCours
       if (r.accepting && openByName[key] === undefined) {
         const rec = record.find((c) => nameKey(c.name) === key)!;
         openByName[rec.name] = r.id;
-        open.push({ id: r.id, name: rec.name, description: rec.kindLabel });
+        open.push({ id: r.id, name: rec.name, description: rec.kindLabel, teacher: rec.teacher });
       }
       continue;
     }
@@ -57,7 +57,7 @@ export function matchCourses(record: Course[], rows: DbCourseRow[]): PublicCours
       id: r.id, accepting: r.accepting, name: key, kind: r.kind, kindLabel: r.description, teacher: r.teacher,
       place: r.place, start: r.startedOn, status: r.status, note: null, graduates: null,
     });
-    if (r.accepting) open.push({ id: r.id, name: key, description: r.description });
+    if (r.accepting) open.push({ id: r.id, name: key, description: r.description, teacher: r.teacher });
   }
   // Open new courses first, then the rest, newest first.
   extra.sort((a, b) => Number(b.accepting) - Number(a.accepting) || b.id - a.id);

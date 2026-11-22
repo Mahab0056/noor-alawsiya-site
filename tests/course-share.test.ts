@@ -64,7 +64,9 @@ test('only a short lowercase word is kept as ?from=, so nothing odd is echoed in
   assert.equal(cleanFrom('wa'), 'wa');
   assert.equal(cleanFrom(' WA '), 'wa');
   assert.equal(cleanFrom('ig'), 'ig');
-  for (const bad of ['', 'w', 'wa&x=1', '<script>', 'واتس', 'a'.repeat(13), 'wa wa', 'qr1']) assert.equal(cleanFrom(bad), undefined, bad);
+  // Campaign-link names (lib/campaign-links.ts) pass too, so a poster's source survives from a course page into /register.
+  for (const good of ['qr1', 'masjid-board', 'poster-1', 'a'.repeat(20)]) assert.equal(cleanFrom(good), good, good);
+  for (const bad of ['', 'w', 'wa&x=1', '<script>', 'واتس', 'a'.repeat(21), 'wa wa', '-wa', 'wa-', 'wa--x', 'wa_x']) assert.equal(cleanFrom(bad), undefined, bad);
   assert.equal(cleanFrom(['wa', 'ig']), undefined);
   assert.equal(cleanFrom(undefined), undefined);
   assert.equal(courseUrl('narjis-2026'), 'https://noor-alawsiya.com/courses/narjis-2026');
@@ -85,8 +87,19 @@ test('from=wa survives into /register: «سجّل» keeps the source next to the
   const link = readFileSync('components/CourseRegisterLink.tsx', 'utf8');
   assert.match(link, /useSearchParams\(\)\.get\('from'\)/);
   assert.match(link, /registerHref\(course, from\)/);
-  // /register itself still preselects by name, so the link lands on the right course.
-  assert.match(readFileSync('app/register/page.tsx', 'utf8'), /c\.name === wanted/);
+  // /register preselects by id or name (pickCourse, after the merge with register-form-ux), so the link lands on the right course.
+  assert.match(readFileSync('app/register/page.tsx', 'utf8'), /pickCourse\(courses, wanted\)/);
+  assert.equal(new URL(registerHref(42, 'masjid-board'), ORIGIN).search, '?course=42&from=masjid-board');
+});
+
+test('a course page offers «سجّل» only for a course open in the database, linked by its id (review fix)', () => {
+  const page = readFileSync('app/courses/[slug]/page.tsx', 'utf8');
+  assert.match(page, /const live = await getPublicCourses\(\);/);
+  assert.match(page, /const openId = live\?\.openByName\[course\.name\];/);
+  assert.match(page, /\{openId !== undefined \? \(\s*<Suspense/);
+  assert.match(page, /registerHref\(openId\)/);
+  assert.match(page, /<CourseRegisterLink course=\{openId\}/);
+  assert.doesNotMatch(page, /registerHref\(course\.name\)/);
 });
 
 test('each course page has its own og:title, og:description, og:url and card image; the home card is untouched', () => {

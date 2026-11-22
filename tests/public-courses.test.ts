@@ -9,6 +9,7 @@ import { resetDbForTests, type Db } from '@/lib/db';
 import { coursesCount, homeCourses, matchCourses, nameKey, readPublishedCourses } from '@/lib/public-courses';
 import { pickCourse } from '@/lib/form-rules';
 import { coursesLd, ldJson } from '@/lib/seo';
+import { courseSlug } from '@/lib/share';
 
 let db: Db;
 let adminId: number;
@@ -89,14 +90,14 @@ test('courses added in the panel: published ones are listed as new, closed (unpu
   assert.equal(x.accepting, true);
   assert.equal(x.place, 'مكان تجريبي');
   assert.equal(x.start, 'كانون الثاني ٢٠٢٧');
-  assert.deepEqual(v.open, [{ id: openId, name: 'دورة تجريبية مفتوحة', description: null }]);
+  assert.deepEqual(v.open, [{ id: openId, name: 'دورة تجريبية مفتوحة', description: null, teacher: 'أستاذ تجريبي' }]);
 
   // Closing it in the panel unpublishes it: it leaves the public page.
   await setCourseAccepting(db, adminId, openId, false);
   assert.deepEqual((await view()).extra, []);
 });
 
-test('JSON-LD lists Course items only for open courses, each linking to its registration', async () => {
+test('JSON-LD lists Course items only for open courses, each linking to its course page', async () => {
   const c = RUNNING[1];
   await setCourseAccepting(db, adminId, ids[c.name], true);
   const ld = coursesLd((await view()).open)!;
@@ -104,7 +105,8 @@ test('JSON-LD lists Course items only for open courses, each linking to its regi
   const item = ld.itemListElement[0].item;
   assert.equal(item['@type'], 'Course');
   assert.equal(item.name, c.name);
-  assert.equal(item.url, `https://noor-alawsiya.com/register?course=${ids[c.name]}`);
+  // After the merge with course-share every record course has its own page; that is the Course's url.
+  assert.equal(item.url, `https://noor-alawsiya.com/courses/${courseSlug(c)}`);
   assert.equal(item.description, c.kindLabel);
   assert.deepEqual(JSON.parse(ldJson(ld)), ld);
   await setCourseAccepting(db, adminId, ids[c.name], false);

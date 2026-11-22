@@ -1,4 +1,5 @@
 import { CONTACT } from '@/lib/data';
+import { courseSlug, coursePath } from '@/lib/share';
 
 const ORIGIN = 'https://noor-alawsiya.com';
 const NAME = 'مدرسة نور الأوصياء للدراسات القرآنية';
@@ -30,7 +31,7 @@ export const ldJson = (data: unknown) => JSON.stringify(data).replace(/</g, '\\u
  * that do not take new students are left out, so search results never advertise a course nobody can join.
  * Returns null when there is nothing to list (or the database could not be read): the page then prints no course data.
  */
-export function coursesLd(open: { id: number; name: string; description: string | null }[]) {
+export function coursesLd(open: { id: number; name: string; description: string | null; teacher?: string }[]) {
   if (open.length === 0) return null;
   return {
     '@context': 'https://schema.org',
@@ -42,10 +43,12 @@ export function coursesLd(open: { id: number; name: string; description: string 
       item: {
         '@type': 'Course',
         name: c.name,
-        url: `${ORIGIN}/register?course=${c.id}`,
+        // The course's own page when it has one (lib/share.ts), else the form with the course chosen.
+        url: courseSlug(c) ? `${ORIGIN}${coursePath(courseSlug(c)!)}` : `${ORIGIN}/register?course=${c.id}`,
         provider: ORGANIZATION,
         inLanguage: 'ar',
-        ...(c.description ? { description: c.description } : {}),
+        // Google's Course data asks for a description: the record's kind, else who teaches it (a fact we have).
+        ...(c.description ? { description: c.description } : c.teacher ? { description: `بإشراف ${c.teacher}` } : {}),
       },
     })),
   };

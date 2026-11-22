@@ -8,9 +8,12 @@ import { Icon } from '@/components/Icon';
 import { ShareCourse } from '@/components/ShareCourse';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { CONTACT, KIND_TAG } from '@/lib/data';
+import { getPublicCourses } from '@/lib/public-courses-cache';
 import { COURSE_PAGES, courseBySlug, courseMetadata, registerHref } from '@/lib/share';
 
-// One page per course in the record, built at `next build` (no database read). Any other slug renders notFound().
+// One page per course in the record, built at `next build` (no database read there). Any other slug renders notFound().
+// «سجّل» follows the database like the home and /courses cards (lib/public-courses-cache.ts): only a course that is
+// published and open gets it, with its id; while the database cannot be read the page offers WhatsApp only.
 
 export function generateStaticParams() {
   return COURSE_PAGES.map(({ slug }) => ({ slug }));
@@ -34,7 +37,9 @@ export default async function CoursePage({ params }: PageProps<'/courses/[slug]'
     ['البداية', course.start ?? <NotStated />],
   ];
   if (course.status === 'done') facts.push(['المتخرجون', course.graduates ?? <NotStated />]);
-  const open = course.status === 'open';
+  const open = course.status === 'open'; // the record: still running
+  const live = await getPublicCourses();
+  const openId = live?.openByName[course.name]; // the database: takes new students now
   const registerLabel = 'سجّل في هذه الدورة';
 
   return (
@@ -49,6 +54,12 @@ export default async function CoursePage({ params }: PageProps<'/courses/[slug]'
             <h1>{course.name}</h1>
             <div className="ctags">
               {course.kind ? <span className="tag y">{KIND_TAG[course.kind]}</span> : null}
+              {openId !== undefined ? (
+                <span className="tag ok">
+                  <i />
+                  التسجيل مفتوح
+                </span>
+              ) : null}
               {open ? (
                 <span className="tag ok">
                   <i />
@@ -76,18 +87,18 @@ export default async function CoursePage({ params }: PageProps<'/courses/[slug]'
                 ))}
               </dl>
               <div className="acts">
-                {open ? (
+                {openId !== undefined ? (
                   <Suspense
                     fallback={
-                      <Link className="btn y" href={registerHref(course.name)}>
+                      <Link className="btn y" href={registerHref(openId)}>
                         {registerLabel}
                       </Link>
                     }
                   >
-                    <CourseRegisterLink course={course.name} label={registerLabel} />
+                    <CourseRegisterLink course={openId} label={registerLabel} />
                   </Suspense>
                 ) : null}
-                <a className={open ? 'btn o' : 'btn k'} href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
+                <a className={openId !== undefined ? 'btn o' : 'btn k'} href={CONTACT.whatsapp} target="_blank" rel="noopener noreferrer">
                   <Icon name="msg" size="s" />
                   اسأل المدرسة على واتساب
                 </a>
