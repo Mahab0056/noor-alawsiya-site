@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { logoutAction } from '@/app/actions';
 import { CourseRequestForm } from '@/components/CourseRequestForm';
@@ -10,6 +11,7 @@ import { getDb } from '@/lib/db';
 import { formatDate, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
 import { listStudentRegistrations, type RegistrationStatus } from '@/lib/registration';
 import { requireStudent } from '@/lib/session';
+import { welcomeEnabled, welcomePath, welcomeSlugFor } from '@/lib/welcome';
 
 export const metadata: Metadata = { title: 'حسابي', robots: { index: false, follow: false } };
 
@@ -41,6 +43,7 @@ async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchPara
   const student = await requireStudent();
   const db = await getDb();
   const [requests, ctx, params] = await Promise.all([listStudentRegistrations(db, student.id), courseRequestContext(db, student.id), searchParams]);
+  const showWelcome = welcomeEnabled(); // flag WELCOME_PAGE: off = no link
   const choices = ctx?.courses.filter((c) => c.taken === null) ?? [];
   return (
     <>
@@ -87,6 +90,13 @@ async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchPara
               بإشراف {r.teacher} · أُرسل الطلب في {formatDate(r.createdAt)}
             </p>
             <p>{EXPLAIN[r.status]}</p>
+            {showWelcome && r.status === 'accepted' && welcomeSlugFor(r.course) ? (
+              <p>
+                <Link className="btn w sm" href={welcomePath(welcomeSlugFor(r.course)!)}>
+                  أهلاً بيك بالدورة: ما تحتاجه قبل أول يوم
+                </Link>
+              </p>
+            ) : null}
             {r.adminNote ? (
               <p className="alert info">
                 <b>ملاحظة الإدارة:</b> {r.adminNote}

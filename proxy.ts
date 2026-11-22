@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { canonicalRedirect, requestHost } from '@/lib/canonical-host';
 import { SESSION_COOKIE } from '@/lib/cookie-names';
+import { welcomeEnabled } from '@/lib/welcome-config';
 
 /**
  * Two quick checks before any page:
@@ -15,6 +16,12 @@ export function proxy(request: NextRequest) {
   const host = requestHost(request.headers.get('x-forwarded-host'), request.headers.get('host'));
   const canonical = canonicalRedirect(host, pathname, search);
   if (canonical) return NextResponse.redirect(canonical, 308);
+
+  // Flag WELCOME_PAGE off (the default): /welcome/* is a real 404. Decided here, per request, so switching the flag needs no rebuild
+  // (a page that reads the variable itself would keep the value it saw at build time).
+  if ((pathname === '/welcome' || pathname.startsWith('/welcome/')) && !welcomeEnabled()) {
+    return NextResponse.rewrite(new URL('/welcome-is-off', request.url));
+  }
 
   const admin = pathname === '/admin' || pathname.startsWith('/admin/');
   const account = pathname === '/account' || pathname.startsWith('/account/');
