@@ -1,9 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useActionState, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { registerAction, type RegisterState } from '@/app/actions';
-import { isMinorIn, MAX_NAME, MIN_PASSWORD, NO, normalizePhone, toYear, visibleQuestions, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse } from '@/lib/form-rules';
+import { errorTarget, isMinorIn, isYearShape, MAX_NAME, MIN_PASSWORD, NO, normalizePhone, phoneError, STUDENT_FIELDS, toYear, visibleQuestions, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse } from '@/lib/form-rules';
 import { Field, fieldProps } from './Field';
 import { Icon } from './Icon';
 import { Logo } from './SiteChrome';
@@ -14,62 +14,75 @@ const STEPS = [
   { title: 'المراجعة والإرسال', sub: 'ثم تراجع الإدارة الطلب', lead: 'راجع البيانات قبل الإرسال. يمكنك الرجوع وتعديل أي شيء.' },
 ];
 const AR = new Intl.NumberFormat('ar-EG');
-const STUDENT_FIELDS = ['fullName', 'birthYear', 'phone', 'password', 'courseId', 'guardianName', 'guardianPhone', 'guardianConsent'];
-const YEAR_SHAPE = /^[0-9٠-٩]{4}$/;
+/** Fields the keyboard's Enter key walks through, in screen order. Ticks and radio buttons are left to the thumb. */
+const TYPED = 'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), select';
 
 type Student = { fullName: string; birthYear: string; phone: string; password: string; courseId: string; guardianName: string; guardianPhone: string; guardianConsent: boolean };
 
-/** The step that holds the first error, so the user lands where the problem is. Errors about the whole form stay on the last step. */
-const stepOf = (errors: FieldErrors) => (Object.keys(errors).some((k) => STUDENT_FIELDS.includes(k)) ? 0 : Object.keys(errors).some((k) => /^q\d+$/.test(k)) ? 1 : 2);
-
 const without = (errors: FieldErrors, key: string) => Object.fromEntries(Object.entries(errors).filter(([k]) => k !== key));
 
-export function RegisterForm({ courses, questions, preselect, thisYear }: { courses: OpenCourse[]; questions: FormQuestion[]; preselect?: number; thisYear: number }) {
+/** `courseMissed`: the link asked for a course that is not open, so nothing is preselected and the form says why. */
+export function RegisterForm({ courses, questions, preselect, courseMissed = false, thisYear }: { courses: OpenCourse[]; questions: FormQuestion[]; preselect?: number; courseMissed?: boolean; thisYear: number }) {
   const [step, setStep] = useState(0);
   const [s, setS] = useState<Student>({ fullName: '', birthYear: '', phone: '', password: '', courseId: preselect ? String(preselect) : '', guardianName: '', guardianPhone: '', guardianConsent: false });
   const [answers, setAnswers] = useState<Answers>({});
   const [errors, setErrors] = useState<FieldErrors>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [copied, setCopied] = useState(false);
+  // One focus move per step change or failed check: `field` is the input to land on (by name), null for the step title.
+  const [move, setMove] = useState<{ n: number; field: string | null }>({ n: 0, field: null });
   const main = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
-  const first = useRef(true);
-  const focusError = useRef(false);
 
-  const [, formAction, pending] = useActionState(async (prev: RegisterState, form: FormData) => {
-    const result = await registerAction(prev, form);
-    if (result?.errors) show(result.errors, stepOf(result.errors));
-    return result;
-  }, undefined);
-
-  // After a step change or a failed check, put focus where the user needs to act next:
-  // the first field with a problem, or else the step title.
+  // After a step change or a failed check, put focus where the user needs to act next: the first field with a problem
+  // in screen order, or else the step title. Only then: clearing an error while the user types must never take focus
+  // away from the field (on a phone that also closes the keyboard).
   useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    const bad = focusError.current ? main.current?.querySelector<HTMLElement>('[aria-invalid="true"]') : null;
-    focusError.current = false;
-    (bad ?? heading.current)?.focus();
-  }, [step, errors]);
+    if (move.n === 0) return;
+    const field = move.field ? main.current?.querySelector<HTMLElement>(`[name="${move.field}"]`) : null;
+    (field ?? heading.current)?.focus();
+  }, [move]);
 
   // The guardian block shows for a minor, and also whenever the server asks for guardian details,
   // so an error can never point at a field that is not on screen.
-  const minor = (YEAR_SHAPE.test(s.birthYear.trim()) && isMinorIn(toYear(s.birthYear), thisYear)) || Boolean(errors.guardianName || errors.guardianPhone || errors.guardianConsent);
+  const minor = (isYearShape(s.birthYear) && isMinorIn(toYear(s.birthYear), thisYear)) || Boolean(errors.guardianName || errors.guardianPhone || errors.guardianConsent);
   const visible = visibleQuestions(questions, answers);
   const course = courses.find((c) => String(c.id) === s.courseId);
   const shownKeys = new Set([...STUDENT_FIELDS, 'form', ...visible.map((q) => `q${q.id}`)]);
   const stale = Object.keys(errors).some((k) => !shownKeys.has(k));
 
-  function show(found: FieldErrors, at: number) {
-    focusError.current = true;
+  const studentPhone = normalizePhone(s.phone);
+
+  function show(found: FieldErrors) {
+    const target = errorTarget(found, visible.map((q) => q.id));
     setErrors(found);
-    setStep(at);
+    setStep(target.step);
+    setMove((old) => ({ n: old.n + 1, field: target.field }));
   }
+
+  function go(to: number) {
+    setStep(to);
+    setMove((old) => ({ n: old.n + 1, field: null }));
+  }
+
+  const [, formAction, pending] = useActionState(async (prev: RegisterState, form: FormData) => {
+    const result = await registerAction(prev, form);
+    if (result?.errors) show(result.errors);
+    return result;
+  }, undefined);
 
   const set = <K extends keyof Student>(key: K, value: Student[K]) => {
     setS((old) => ({ ...old, [key]: value }));
     if (errors[key]) setErrors((old) => without(old, key));
+    if (key === 'guardianPhone' || key === 'phone') setCopied(false);
   };
+
+  /** One tap instead of typing the same eleven digits again: most children are registered with a parent's number. */
+  function sameAsPhone() {
+    set('guardianPhone', studentPhone ?? s.phone);
+    setCopied(true);
+    setMove((old) => ({ n: old.n + 1, field: 'guardianConsent' })); // the next thing to do; a tick does not open the keyboard
+  }
   const answer = (q: FormQuestion, value: string | string[]) => {
     setAnswers((old) => ({ ...old, [String(q.id)]: value }));
     if (errors[`q${q.id}`]) setErrors((old) => without(old, `q${q.id}`));
@@ -81,13 +94,15 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
     if (at === 0) {
       if (!s.courseId) e.courseId = 'اختر الدورة التي تريد التسجيل فيها.';
       if (s.fullName.trim().split(/\s+/).length < 2) e.fullName = 'اكتب الاسم الثنائي على الأقل.';
-      if (!YEAR_SHAPE.test(s.birthYear.trim())) e.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
+      if (!isYearShape(s.birthYear)) e.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
       else if (toYear(s.birthYear) < thisYear - 90 || toYear(s.birthYear) > thisYear - 5) e.birthYear = 'سنة الميلاد غير صحيحة.';
-      if (!normalizePhone(s.phone)) e.phone = 'اكتب رقم هاتف عراقياً صحيحاً، مثل 07701234567.';
-      if (s.password.length < MIN_PASSWORD) e.password = `كلمة المرور ${AR.format(MIN_PASSWORD)} خانات على الأقل.`;
+      const phone = phoneError(s.phone);
+      if (phone) e.phone = phone;
+      if (s.password.length < MIN_PASSWORD) e.password = `كلمة المرور ${AR.format(MIN_PASSWORD)} أحرف على الأقل.`;
       if (minor) {
         if (s.guardianName.trim().length < 5) e.guardianName = 'اكتب اسم ولي الأمر.';
-        if (!normalizePhone(s.guardianPhone)) e.guardianPhone = 'اكتب رقم هاتف ولي الأمر.';
+        const guardianPhone = phoneError(s.guardianPhone, 'guardian');
+        if (guardianPhone) e.guardianPhone = guardianPhone;
         if (!s.guardianConsent) e.guardianConsent = 'التسجيل لمن هو دون ١٨ سنة يحتاج موافقة ولي الأمر.';
       }
     } else if (at === 1) {
@@ -101,10 +116,25 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
 
   function next() {
     const found = check(step);
-    if (Object.keys(found).length) show(found, step);
+    if (Object.keys(found).length) show(found);
     else {
       setErrors({});
-      setStep(step + 1);
+      go(step + 1);
+    }
+  }
+
+  // Steps 1-2 have no submit button, so the browser never submits on Enter. The keyboard's Enter key («التالي» on a
+  // phone) goes to the next field of the step, and only from the last one to the next step: checking the whole step
+  // after the first field would paint every empty field red before the user has reached it.
+  function onKeyDown(event: KeyboardEvent<HTMLFormElement>) {
+    if (event.key !== 'Enter' || step >= 2 || event.nativeEvent.isComposing) return;
+    const t = event.target;
+    if (t instanceof HTMLInputElement && !['checkbox', 'radio', 'button', 'submit'].includes(t.type)) {
+      event.preventDefault();
+      const typed = [...event.currentTarget.querySelectorAll<HTMLElement>(TYPED)].filter((el) => el.offsetParent !== null);
+      const after = typed[typed.indexOf(t) + 1];
+      if (after) after.focus();
+      else next();
     }
   }
 
@@ -167,8 +197,13 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
           </p>
         ) : null}
 
-        <form action={formAction} onSubmit={onSubmit} noValidate>
+        <form action={formAction} onSubmit={onSubmit} onKeyDown={onKeyDown} noValidate>
           <div hidden={step !== 0}>
+            {courseMissed && !s.courseId ? (
+              <p className="alert info" data-course-note>
+                الدورة التي في الرابط غير مفتوحة للتسجيل من الموقع الآن. اختر من الدورات المفتوحة في القائمة.
+              </p>
+            ) : null}
             <div className="card q">
               <Field id="courseId" label="الدورة" error={errors.courseId} required>
                 <select {...fieldProps('courseId', { error: errors.courseId, required: true })} value={s.courseId} onChange={(e) => set('courseId', e.target.value)}>
@@ -181,18 +216,35 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
                 </select>
               </Field>
               <Field id="fullName" label="اسم الطالب الكامل" error={errors.fullName} required>
-                <input {...fieldProps('fullName', { error: errors.fullName, required: true })} value={s.fullName} onChange={(e) => set('fullName', e.target.value)} autoComplete="name" maxLength={MAX_NAME} />
+                <input {...fieldProps('fullName', { error: errors.fullName, required: true })} value={s.fullName} onChange={(e) => set('fullName', e.target.value)} autoComplete="section-student name" enterKeyHint="next" spellCheck={false} autoCorrect="off" maxLength={MAX_NAME} />
               </Field>
               <div className="two">
                 <Field id="birthYear" label="سنة الميلاد" hint="السنة فقط، مثل 2008" error={errors.birthYear} required>
-                  <input {...fieldProps('birthYear', { error: errors.birthYear, hint: true, required: true, ltr: true })} value={s.birthYear} onChange={(e) => set('birthYear', e.target.value)} inputMode="numeric" maxLength={4} autoComplete="bday-year" />
+                  <input {...fieldProps('birthYear', { error: errors.birthYear, hint: true, required: true, ltr: true })} value={s.birthYear} onChange={(e) => set('birthYear', e.target.value)} inputMode="numeric" maxLength={4} autoComplete="off" enterKeyHint="next" />
                 </Field>
                 <Field id="phone" label="رقم الهاتف" hint="به تدخل إلى الحساب. إن لم يكن للطالب هاتف فاكتب رقم ولي الأمر." error={errors.phone} required>
-                  <input {...fieldProps('phone', { error: errors.phone, hint: true, required: true, ltr: true })} value={s.phone} onChange={(e) => set('phone', e.target.value)} type="tel" inputMode="tel" autoComplete="tel" maxLength={20} />
+                  <input {...fieldProps('phone', { error: errors.phone, hint: true, required: true, ltr: true })} value={s.phone} onChange={(e) => set('phone', e.target.value)} type="tel" inputMode="tel" autoComplete="section-student tel-national" enterKeyHint="next" maxLength={40} />
                 </Field>
               </div>
-              <Field id="password" label="كلمة المرور" hint={`${AR.format(MIN_PASSWORD)} خانات على الأقل. احفظها لمتابعة الطلب والدروس.`} error={errors.password} required>
-                <input {...fieldProps('password', { error: errors.password, hint: true, required: true, ltr: true })} value={s.password} onChange={(e) => set('password', e.target.value)} type="password" autoComplete="new-password" maxLength={200} />
+              <Field id="password" label="كلمة المرور" hint={`${AR.format(MIN_PASSWORD)} أحرف على الأقل. احفظها لمتابعة الطلب والدروس.`} error={errors.password} required>
+                <div className="pw">
+                  <input
+                    {...fieldProps('password', { error: errors.password, hint: true, required: true, ltr: true })}
+                    value={s.password}
+                    onChange={(e) => set('password', e.target.value)}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    enterKeyHint="next"
+                    maxLength={200}
+                  />
+                  {/* A password typed blind on a phone, with no second field to confirm it, is the easy way to lose the account. */}
+                  <button type="button" aria-label={`${showPassword ? 'إخفاء' : 'إظهار'} كلمة المرور`} onClick={() => setShowPassword(!showPassword)}>
+                    {showPassword ? 'إخفاء' : 'إظهار'}
+                  </button>
+                </div>
               </Field>
             </div>
 
@@ -202,10 +254,27 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
                 <p className="h">الطالب دون ١٨ سنة، فنحتاج اسم ولي الأمر ورقمه وموافقته.</p>
                 <div className="two">
                   <Field id="guardianName" label="اسم ولي الأمر" error={errors.guardianName} required>
-                    <input {...fieldProps('guardianName', { error: errors.guardianName, required: true })} value={s.guardianName} onChange={(e) => set('guardianName', e.target.value)} maxLength={MAX_NAME} />
+                    <input {...fieldProps('guardianName', { error: errors.guardianName, required: true })} value={s.guardianName} onChange={(e) => set('guardianName', e.target.value)} autoComplete="section-guardian name" enterKeyHint="next" spellCheck={false} autoCorrect="off" maxLength={MAX_NAME} />
                   </Field>
-                  <Field id="guardianPhone" label="رقم هاتف ولي الأمر" error={errors.guardianPhone} required>
-                    <input {...fieldProps('guardianPhone', { error: errors.guardianPhone, required: true, ltr: true })} value={s.guardianPhone} onChange={(e) => set('guardianPhone', e.target.value)} type="tel" inputMode="tel" maxLength={20} />
+                  <Field
+                    id="guardianPhone"
+                    label="رقم هاتف ولي الأمر"
+                    error={errors.guardianPhone}
+                    required
+                    after={
+                      <>
+                        {studentPhone && normalizePhone(s.guardianPhone) !== studentPhone ? (
+                          <button type="button" className="linkbtn same" data-same-phone onClick={sameAsPhone}>
+                            هو نفس رقم الهاتف أعلاه
+                          </button>
+                        ) : null}
+                        <span className="vh" role="status">
+                          {copied ? 'كُتب رقم الهاتف نفسه لولي الأمر.' : ''}
+                        </span>
+                      </>
+                    }
+                  >
+                    <input {...fieldProps('guardianPhone', { error: errors.guardianPhone, required: true, ltr: true })} value={s.guardianPhone} onChange={(e) => set('guardianPhone', e.target.value)} type="tel" inputMode="tel" autoComplete="section-guardian tel-national" enterKeyHint="next" maxLength={40} />
                   </Field>
                 </div>
                 <label className="opt">
@@ -297,17 +366,21 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
                 </div>
                 <div>
                   <dt>سنة الميلاد</dt>
-                  <dd className="num">{s.birthYear}</dd>
+                  <dd>
+                    <span className="num">{s.birthYear}</span>
+                  </dd>
                 </div>
                 <div>
                   <dt>رقم الهاتف</dt>
-                  <dd className="num">{s.phone}</dd>
+                  <dd>
+                    <span className="num">{studentPhone ?? s.phone}</span>
+                  </dd>
                 </div>
                 {minor ? (
                   <div>
                     <dt>ولي الأمر</dt>
                     <dd>
-                      {s.guardianName} · <span className="num">{s.guardianPhone}</span>
+                      {s.guardianName} · <span className="num">{normalizePhone(s.guardianPhone) ?? s.guardianPhone}</span>
                     </dd>
                   </div>
                 ) : null}
@@ -335,17 +408,19 @@ export function RegisterForm({ courses, questions, preselect, thisYear }: { cour
 
           <div className="reg-acts">
             {step > 0 ? (
-              <button type="button" className="btn w" onClick={() => setStep(step - 1)} disabled={pending}>
+              <button type="button" className="btn w" onClick={() => go(step - 1)} disabled={pending}>
                 السابق
               </button>
             ) : null}
             {step < 2 ? (
-              <button type="button" className="btn k" onClick={next}>
+              // Separate keys: without them React reuses one <button> and turns it into type="submit" during the
+              // click on step 2, so the browser sent the form before the review step.
+              <button key="next" type="button" className="btn k" onClick={next}>
                 التالي: {STEPS[step + 1].title}
                 <Icon name="chev" size="s" />
               </button>
             ) : (
-              <button type="submit" className="btn k" disabled={pending}>
+              <button key="submit" type="submit" className="btn k" disabled={pending}>
                 {pending ? 'جارٍ الإرسال…' : 'إرسال الطلب'}
               </button>
             )}

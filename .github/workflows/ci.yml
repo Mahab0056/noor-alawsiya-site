@@ -1,0 +1,120 @@
+name: CI
+
+# No repository secrets are used. Tests run on PGlite in memory, and on a throwaway Postgres service container.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - 'platform/**'
+      - 'wave/**'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: lint, test (PGlite), build, typecheck, audit, secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      pull-requests: read # gitleaks-action lists the PR's commits on pull_request events
+    env:
+      CI: true
+      NEXT_TELEMETRY_DISABLED: 1
+    steps:
+      - name: Checkout (full history for gitleaks)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # No DATABASE_URL / TEST_DATABASE_URL: the tests use PGlite in memory (memory://).
+      - name: Test (PGlite)
+        run: npm test
+
+      # No DATABASE_URL: the build must not need a database.
+      - name: Build
+        run: npm run build
+
+      # Must run after the build: it needs the route types (PageProps/LayoutProps) that next build generates.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Audit (production deps, high+)
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Secret scan (gitleaks)
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # automatic token, not a repo secret
+          GITLEAKS_ENABLE_COMMENTS: false
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: false
+          GITLEAKS_VERSION: 8.30.1 # .gitleaks.toml uses [[allowlists]] with targetRules (the action's default 8.24.3 is older)
+
+  test-postgres:
+    name: test (real Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      CI: true
+    services:
+      postgres:
+        image: postgres:18@sha256:e754b839f447639b7004895f4d8a4bfcb4e9dbe3a1bc035f27f646562a16fd61 # postgres:18, 19/11/2026
+        env:
+          # Throwaway container that lives only for this job, reachable only from the runner: no password.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: noor_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d noor_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node 22
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      # A fresh random APP_SECRET for this run only (needed whenever DATABASE_URL is set). Masked, never stored.
+      - name: Generate throwaway APP_SECRET
+        run: |
+          s="$(openssl rand -hex 32)"
+          echo "::add-mask::$s"
+          echo "APP_SECRET=$s" >> "$GITHUB_ENV"
+
+      # One test file at a time: every file wipes and reuses the same database.
+      - name: Test (Postgres 18)
+        env:
+          TEST_DATABASE_URL: postgres://postgres@localhost:5432/noor_test
+        run: npx tsx --conditions=react-server --test --test-concurrency=1 tests/*.test.ts

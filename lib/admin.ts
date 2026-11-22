@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Db } from './db';
+import type { QueueSort } from './queue';
 import { MAX_TEXT, type QuestionKind, type RegistrationStatus, type ShowIf } from './registration';
 
 /**
@@ -8,29 +9,64 @@ import { MAX_TEXT, type QuestionKind, type RegistrationStatus, type ShowIf } fro
  * Every change is written to audit_log by reference only, never with student names or phones.
  */
 
-async function audit(db: Db, adminId: number, action: string, target: string, detail?: Record<string, unknown>) {
+/** adminId null = the operator command (scripts/create-admin.ts), not a signed-in admin. */
+export async function audit(db: Db, adminId: number | null, action: string, target: string, detail?: Record<string, unknown>) {
   await db.query('insert into audit_log (admin_id, action, target, detail) values ($1, $2, $3, $4)', [adminId, action, target, detail ? JSON.stringify(detail) : null]);
 }
 
 // ---------------------------------------------------------------- registration requests
 
-export type RequestRow = { id: number; studentName: string; birthYear: number; hasGuardian: boolean; course: string; status: RegistrationStatus; createdAt: Date };
+/** existingStudent: asked for from «حسابي» by a student who already had an account (0007), not with the registration form. */
+export type RequestRow = { id: number; studentName: string; birthYear: number; hasGuardian: boolean; course: string; status: RegistrationStatus; createdAt: Date; existingStudent: boolean };
 
-export async function listRequests(db: Db, status: RegistrationStatus): Promise<RequestRow[]> {
-  const rows = await db.query<{ id: string; full_name: string; birth_year: number; has_guardian: boolean; course: string; status: RegistrationStatus; created_at: Date }>(
-    `select r.id, s.full_name, s.birth_year, (s.guardian_consent_at is not null) as has_guardian, c.name as course, r.status, r.created_at
+/**
+ * One status, optionally one course. Default order: waiting requests oldest first (lib/queue.ts defaultSort), so the
+ * request that has waited longest is answered first. The id breaks ties, so the order never changes between loads.
+ */
+export async function listRequests(
+  db: Db,
+  status: RegistrationStatus,
+  { courseId = null, sort = status === 'pending' ? 'oldest' : 'newest' }: { courseId?: number | null; sort?: QueueSort } = {}
+): Promise<RequestRow[]> {
+  const order = sort === 'oldest' ? 'r.created_at asc, r.id asc' : 'r.created_at desc, r.id desc';
+  const rows = await db.query<{ id: string; full_name: string; birth_year: number; has_guardian: boolean; course: string; status: RegistrationStatus; created_at: Date; origin: string }>(
+    `select r.id, s.full_name, s.birth_year, (s.guardian_consent_at is not null) as has_guardian, c.name as course, r.status, r.created_at, r.origin
      from registrations r join students s on s.id = r.student_id join courses c on c.id = r.course_id
-     where r.status = $1 order by r.created_at desc limit 200`,
-    [status]
+     where r.status = $1 and ($2::bigint is null or r.course_id = $2::bigint) order by ${order} limit 200`,
+    [status, courseId]
   );
-  return rows.map((r) => ({ id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at) }));
+  return rows.map((r) => ({ id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at), existingStudent: r.origin === 'account' }));
 }
 
-export async function countRequests(db: Db): Promise<Record<RegistrationStatus, number>> {
-  const rows = await db.query<{ status: RegistrationStatus; n: string }>('select status, count(*) as n from registrations group by status');
+/** Requests per status, for every course or for one. */
+export async function countRequests(db: Db, courseId: number | null = null): Promise<Record<RegistrationStatus, number>> {
+  const rows = await db.query<{ status: RegistrationStatus; n: string }>(
+    'select status, count(*) as n from registrations where ($1::bigint is null or course_id = $1::bigint) group by status',
+    [courseId]
+  );
   const out: Record<RegistrationStatus, number> = { pending: 0, accepted: 0, rejected: 0 };
   for (const r of rows) out[r.status] = Number(r.n);
   return out;
+}
+
+/** When the oldest request still waiting (any course) was sent, or null when none waits. */
+export async function oldestPendingAt(db: Db): Promise<Date | null> {
+  const [row] = await db.query<{ at: Date | null }>(`select min(created_at) as at from registrations where status = 'pending'`);
+  return row?.at ? new Date(row.at) : null;
+}
+
+export type CourseFilterOption = { id: number; name: string; pending: number };
+
+/** Courses for the list's course filter: every course that has a request or takes registrations now. */
+export async function listCourseFilterOptions(db: Db): Promise<CourseFilterOption[]> {
+  const rows = await db.query<{ id: string; name: string; pending: string }>(
+    `select c.id, c.name, count(r.id) filter (where r.status = 'pending') as pending
+       from courses c left join registrations r on r.course_id = c.id
+      group by c.id
+     having count(r.id) > 0 or (c.published and c.status = 'open')
+      order by count(r.id) filter (where r.status = 'pending') desc, c.name, c.id`
+  );
+  return rows.map((r) => ({ id: Number(r.id), name: r.name, pending: Number(r.pending) }));
 }
 
 export type RequestDetail = RequestRow & {
@@ -40,6 +76,10 @@ export type RequestDetail = RequestRow & {
   teacher: string;
   adminNote: string | null;
   reviewedAt: Date | null;
+  /** The student's own note, for a request made from «حسابي». */
+  studentNote: string | null;
+  /** For a minor's request made from «حسابي»: when the guardian's agreement to this request was ticked. */
+  requestConsentAt: Date | null;
   answers: { label: string; answer: string }[];
 };
 
@@ -47,9 +87,11 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
   const [r] = await db.query<{
     id: string; full_name: string; birth_year: number; phone: string; guardian_name: string | null; guardian_phone: string | null; has_guardian: boolean;
     course: string; teacher: string; status: RegistrationStatus; admin_note: string | null; created_at: Date; reviewed_at: Date | null;
+    origin: string; student_note: string | null; request_consent_at: Date | null;
   }>(
     `select r.id, s.full_name, s.birth_year, s.phone, s.guardian_name, s.guardian_phone, (s.guardian_consent_at is not null) as has_guardian,
-            c.name as course, c.teacher, r.status, r.admin_note, r.created_at, r.reviewed_at
+            c.name as course, c.teacher, r.status, r.admin_note, r.created_at, r.reviewed_at,
+            r.origin, r.student_note, r.guardian_consent_at as request_consent_at
      from registrations r join students s on s.id = r.student_id join courses c on c.id = r.course_id
      where r.id = $1`,
     [id]
@@ -63,22 +105,57 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
     id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at),
     phone: r.phone, guardianName: r.guardian_name, guardianPhone: r.guardian_phone, teacher: r.teacher, adminNote: r.admin_note,
     reviewedAt: r.reviewed_at ? new Date(r.reviewed_at) : null,
+    existingStudent: r.origin === 'account', studentNote: r.student_note, requestConsentAt: r.request_consent_at ? new Date(r.request_consent_at) : null,
     answers: answers.map((a) => ({ label: a.label, answer: Array.isArray(a.answer) ? a.answer.join('، ') : String(a.answer) })),
   };
 }
 
-/** Accept or reject. A request can be re-decided; rejecting an accepted one revokes access to lessons. */
-export async function reviewRequest(db: Db, adminId: number, id: number, decision: 'accepted' | 'rejected', note: string) {
+export type ReviewResult = 'saved' | 'missing' | 'conflict';
+
+/**
+ * Accept or reject. A request can be re-decided; rejecting an accepted one revokes access to lessons.
+ * 'conflict': accepting an old rejected request while the same student has another pending or accepted request for the
+ * same course (allowed since 0007, which lets a rejected course be asked for again). Decide the newer request instead.
+ */
+export async function reviewRequest(db: Db, adminId: number, id: number, decision: 'accepted' | 'rejected', note: string): Promise<ReviewResult> {
   const adminNote = note.trim().slice(0, MAX_TEXT) || null;
+  try {
+    return await db.tx(async (t) => {
+      const rows = await t.query<{ id: string }>(
+        'update registrations set status = $2, admin_note = $3, reviewed_by = $4, reviewed_at = now() where id = $1 returning id',
+        [id, decision, adminNote, adminId]
+      );
+      if (rows.length === 0) return 'missing';
+      await audit(t, adminId, `registration.${decision}`, `registration:${id}`);
+      return 'saved';
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === '23505') return 'conflict'; // registrations_one_live_idx
+    throw e;
+  }
+}
+
+/**
+ * An admin opened «إبلاغ عبر واتساب» for a decided request. The site sends nothing itself, so this records only
+ * that the prepared chat was opened: by request id and decision, never the phone number, name or message.
+ */
+export async function recordNotified(db: Db, adminId: number, id: number) {
   return db.tx(async (t) => {
-    const rows = await t.query<{ id: string }>(
-      'update registrations set status = $2, admin_note = $3, reviewed_by = $4, reviewed_at = now() where id = $1 returning id',
-      [id, decision, adminNote, adminId]
-    );
-    if (rows.length === 0) return false;
-    await audit(t, adminId, `registration.${decision}`, `registration:${id}`);
+    const [r] = await t.query<{ status: RegistrationStatus }>('select status from registrations where id = $1', [id]);
+    if (!r || r.status === 'pending') return false;
+    await audit(t, adminId, 'registration.notified', `registration:${id}`, { decision: r.status });
     return true;
   });
+}
+
+/** When «إبلاغ عبر واتساب» was last opened for this request's current decision, or null. */
+export async function lastNotifiedAt(db: Db, id: number): Promise<Date | null> {
+  const [row] = await db.query<{ at: Date | null }>(
+    `select max(a.created_at) as at from audit_log a join registrations r on r.id = $1
+     where a.action = 'registration.notified' and a.target = 'registration:' || r.id::text and a.detail->>'decision' = r.status::text`,
+    [id]
+  );
+  return row?.at ? new Date(row.at) : null;
 }
 
 // ---------------------------------------------------------------- questionnaire builder

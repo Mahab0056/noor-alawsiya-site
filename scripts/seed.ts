@@ -1,5 +1,6 @@
 /**
- * Fills an empty database with the school's courses and a starter questionnaire.
+ * Fills an empty database with the school's courses (registration closed: open it per course in /admin/courses)
+ * and a starter questionnaire.
  * Safe to run again: each part is skipped when its table already has rows.
  *
  *   npm run seed            courses + starter questionnaire
@@ -24,11 +25,13 @@ async function main() {
   const [{ n: courseCount }] = await db.query<{ n: string }>('select count(*) as n from courses');
   if (Number(courseCount) === 0) {
     for (const c of COURSES) {
-      await db.query('insert into courses (name, kind, description, teacher, place, started_on, status, published) values ($1, $2, $3, $4, $5, $6, $7, true)', [
-        c.name, c.kind, c.kindLabel, c.teacher, c.place, c.start, c.status,
+      // Unpublished: the record's 'open' means «still running», not «takes new students». A super admin opens
+      // registration course by course in /admin/courses. The local --demo data opens them all, to have something to look at.
+      await db.query('insert into courses (name, kind, description, teacher, place, started_on, status, published) values ($1, $2, $3, $4, $5, $6, $7, $8)', [
+        c.name, c.kind, c.kindLabel, c.teacher, c.place, c.start, c.status, demo,
       ]);
     }
-    console.log(`courses: added ${COURSES.length}`);
+    console.log(`courses: added ${COURSES.length}${demo ? '' : ' (registration closed: a super admin opens it per course in /admin/courses)'}`);
   } else console.log('courses: already present, skipped');
 
   const [{ n: questionCount }] = await db.query<{ n: string }>('select count(*) as n from form_questions');
@@ -93,7 +96,7 @@ async function seedDemo() {
   }
 
   const email = 'admin@noor.test';
-  const { adminId } = await createAdmin(db, { name: 'مدير تجريبي', email, role: 'owner' });
+  const { adminId } = await createAdmin(db, { name: 'مدير تجريبي', email, role: 'super_admin' });
   await reviewRequest(db, adminId, ids[3], 'accepted', 'أهلاً بك. الحلقة يوم الجمعة بعد صلاة العصر.');
   await reviewRequest(db, adminId, ids[5], 'rejected', 'اكتمل عدد هذه الحلقة. سنتواصل معك عند فتح حلقة جديدة.');
 

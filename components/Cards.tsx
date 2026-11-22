@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Icon } from './Icon';
 import type { IconName } from '@/lib/icons';
 import { CONTACT, KIND_TAG, LATEST_YEAR, TEACHERS, type Course, type CourseKind } from '@/lib/data';
+import { courseSlug, coursePath, whatsappShareHref } from '@/lib/share';
 
 const KIND_ICON: Record<CourseKind, IconName> = { tajweed: 'book', tahqiq: 'cert', nagham: 'mic' };
 
@@ -14,8 +15,14 @@ export function NotStated() {
   return <span className="na">غير مذكور</span>;
 }
 
-export function CourseCard({ course }: { course: Course }) {
+/**
+ * `openId` is the database id when the course takes registrations now (lib/public-courses.ts): the card then shows
+ * «التسجيل مفتوح» and a «سجّل» link that preselects the course. Every other course, and every course when the database
+ * could not be read, gets «اسأل» on WhatsApp: the record alone cannot say who takes new students.
+ */
+export function CourseCard({ course, openId }: { course: Course; openId?: number }) {
   const isNew = LATEST_YEAR !== '' && course.start?.includes(LATEST_YEAR);
+  const slug = courseSlug(course);
   return (
     <article className="card course">
       <div className="hd">
@@ -23,10 +30,17 @@ export function CourseCard({ course }: { course: Course }) {
           <Icon name={course.kind ? KIND_ICON[course.kind] : 'book'} size="l" />
         </span>
         <div className="tags">
+          {openId !== undefined ? (
+            <span className="tag ok">
+              <i />
+              التسجيل مفتوح
+            </span>
+          ) : null}
           {isNew ? <span className="tag y">جديد</span> : null}
           {course.kind ? <span className="tag">{KIND_TAG[course.kind]}</span> : null}
         </div>
-        <h3>{course.name}</h3>
+        {/* prefetch off: six course pages (and their share script) would load with the home page and slow its first paint. */}
+        <h3>{slug ? <Link href={coursePath(slug)} prefetch={false}>{course.name}</Link> : course.name}</h3>
         <p>{course.kindLabel ?? 'نوع الدورة غير مذكور'}</p>
       </div>
       <div className="bd">
@@ -50,8 +64,8 @@ export function CourseCard({ course }: { course: Course }) {
             <b>{course.teacher}</b>
           </span>
         </div>
-        {course.status === 'open' ? (
-          <Link className="btn k sm" href={`/register?course=${encodeURIComponent(course.name)}`} aria-label={`سجّل في ${course.name}`}>
+        {openId !== undefined ? (
+          <Link className="btn k sm" href={`/register?course=${openId}`} aria-label={`سجّل في ${course.name}`}>
             سجّل
           </Link>
         ) : (
@@ -60,6 +74,15 @@ export function CourseCard({ course }: { course: Course }) {
           </a>
         )}
       </div>
+      {slug ? (
+        <div className="sh">
+          {/* Server-rendered link only: no client script on the home page. Copy and the share sheet are on the course page. */}
+          <a className="btn ok sm" href={whatsappShareHref(course.name, slug)} target="_blank" rel="noopener noreferrer">
+            <Icon name="msg" size="s" />
+            شارك بالواتساب<span className="vh">: {course.name}</span>
+          </a>
+        </div>
+      ) : null}
     </article>
   );
 }

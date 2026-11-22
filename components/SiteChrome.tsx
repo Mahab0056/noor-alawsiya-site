@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Icon } from './Icon';
 import { CONTACT } from '@/lib/data';
 
-type NavKey = 'home' | 'courses' | 'privacy';
+type NavKey = 'home' | 'courses' | 'privacy' | 'account';
 
 const NAV: { key: NavKey; href: string; label: string }[] = [
   { key: 'home', href: '/', label: 'الرئيسية' },
@@ -29,7 +29,7 @@ export function SiteHeader({ current }: { current?: NavKey }) {
       <a className="skip" href="#main">
         تخطَّ إلى المحتوى
       </a>
-      <div className="strip">
+      <aside className="strip" aria-label="معلومات سريعة عن المدرسة">
         <div className="wrap">
           <span>
             <Icon name="pin" size="s" />
@@ -43,7 +43,7 @@ export function SiteHeader({ current }: { current?: NavKey }) {
           </a>
           <span className="sp">التسجيل مفتوح للدورات الحالية</span>
         </div>
-      </div>
+      </aside>
       <header className="nav">
         <div className="wrap">
           <Logo />
@@ -54,7 +54,14 @@ export function SiteHeader({ current }: { current?: NavKey }) {
               </Link>
             ))}
             <a href="#contact">تواصل</a>
-            <Link href="/login">دخول الطلاب</Link>
+            {/* On /account the student is signed in: the last link names their own page and is the current one. */}
+            {current === 'account' ? (
+              <Link href="/account" className="on" aria-current="page">
+                حسابي
+              </Link>
+            ) : (
+              <Link href="/login">دخول الطلاب</Link>
+            )}
           </nav>
           <div className="acts">
             <Link className="btn k sm" href="/register">
@@ -77,7 +84,7 @@ export function SiteFooter() {
             <p>مدرسة مستقلة غير تابعة لأي جهة، تهدف إلى نشر علوم القرآن وأهل البيت عليهم السلام.</p>
           </div>
           <div>
-            <h4>المدرسة</h4>
+            <h2>المدرسة</h2>
             <Link href="/">الرئيسية</Link>
             <Link href="/courses">الدورات والأساتذة</Link>
             <Link href="/register">التسجيل</Link>
@@ -85,7 +92,7 @@ export function SiteFooter() {
             <Link href="/privacy">سياسة الخصوصية</Link>
           </div>
           <div>
-            <h4>تابعنا</h4>
+            <h2>تابعنا</h2>
             <a href={CONTACT.youtube} {...EXT}>
               يوتيوب
             </a>
@@ -97,7 +104,7 @@ export function SiteFooter() {
             </a>
           </div>
           <div>
-            <h4>تواصل</h4>
+            <h2>تواصل</h2>
             <a className="num" href={CONTACT.phoneHref}>
               {CONTACT.phone}
             </a>

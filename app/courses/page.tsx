@@ -1,6 +1,12 @@
 import type { Metadata } from 'next';
-import { NotStated, TeacherGrid } from '@/components/Cards';
+import Link from 'next/link';
+import { CourseCard, NotStated, TeacherGrid } from '@/components/Cards';
+import { JsonLd } from '@/components/JsonLd';
+import { ShareCourse } from '@/components/ShareCourse';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
+import { coursesLd } from '@/lib/seo';
+import { getPublicCourses } from '@/lib/public-courses-cache';
+import { courseSlug, coursePath } from '@/lib/share';
 import { ar, countOf, COURSES, DONE_COURSES, OPEN_COURSES, TEACHERS, type CourseStatus } from '@/lib/data';
 
 export const metadata: Metadata = {
@@ -20,7 +26,10 @@ function Status({ status }: { status: CourseStatus }) {
   return <span className="tag">غير مذكور</span>;
 }
 
-export default function CoursesPage() {
+export default async function CoursesPage() {
+  // Which courses take registrations now; null if the database cannot be read (the record alone, no badges).
+  const live = await getPublicCourses();
+  const ld = live ? coursesLd(live.open) : null;
   const facts: [string, string][] = [
     [ar(COURSES.length), 'دورة'],
     [ar(OPEN_COURSES.length), 'قائمة الآن'],
@@ -29,6 +38,7 @@ export default function CoursesPage() {
   ];
   return (
     <>
+      {ld ? <JsonLd data={ld} /> : null}
       <SiteHeader current="courses" />
       <main id="main">
         <section className="phead">
@@ -62,11 +72,25 @@ export default function CoursesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {COURSES.map((c) => (
+                  {COURSES.map((c) => {
+                    const openId = live?.openByName[c.name];
+                    return (
                     <tr key={c.name}>
                       <td data-l="">
-                        <b>{c.name}</b>
+                        <b id={courseSlug(c) ? `c-${courseSlug(c)}` : undefined}>{courseSlug(c) ? <Link href={coursePath(courseSlug(c)!)} prefetch={false}>{c.name}</Link> : c.name}</b>
                         <small>{c.kindLabel ?? <NotStated />}</small>
+                        {openId !== undefined ? (
+                          <span className="reg-row">
+                            <span className="tag ok">
+                              <i />
+                              التسجيل مفتوح
+                            </span>
+                            <Link className="btn k sm" href={`/register?course=${openId}`} aria-label={`سجّل في ${c.name}`}>
+                              سجّل
+                            </Link>
+                          </span>
+                        ) : null}
+                        {courseSlug(c) ? <ShareCourse compact name={c.name} slug={courseSlug(c)!} describedBy={`c-${courseSlug(c)}`} /> : null}
                       </td>
                       <td data-l="الأستاذ">{c.teacher}</td>
                       <td data-l="المكان">{c.place ?? <NotStated />}</td>
@@ -77,7 +101,8 @@ export default function CoursesPage() {
                       </td>
                       <td data-l="المتخرجون">{c.graduates ?? <NotStated />}</td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -86,6 +111,24 @@ export default function CoursesPage() {
             </p>
           </div>
         </section>
+
+        {live && live.extra.length > 0 ? (
+          <section className="sec" style={{ paddingTop: 0 }} aria-labelledby="new-courses">
+            <div className="wrap">
+              <div className="sec-h">
+                <div>
+                  <p className="eye">أضافتها الإدارة</p>
+                  <h2 id="new-courses">دورات جديدة</h2>
+                </div>
+              </div>
+              <div className="g3">
+                {live.extra.map((c) => (
+                  <CourseCard key={c.id} course={c} openId={c.accepting ? c.id : undefined} />
+                ))}
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section className="sec" style={{ paddingTop: 0, paddingBottom: 0 }}>
           <div className="wrap">

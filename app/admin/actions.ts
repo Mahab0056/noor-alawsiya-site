@@ -3,7 +3,7 @@
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requestAdminCode, verifyAdminCode } from '@/lib/accounts';
-import { addQuestion, moveQuestion, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
+import { addQuestion, moveQuestion, recordNotified, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
 import { getDb } from '@/lib/db';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
 import { clientIp, endSession, requireAdmin, startSession } from '@/lib/session';
@@ -56,14 +56,24 @@ export async function reviewAction(form: FormData) {
   const requestId = id(form);
   const decision = text(form, 'decision');
   const from = STATUSES.find((s) => s === text(form, 'from')) ?? 'pending';
+  // Keep the course filter the admin was working in (digits only; the page ignores an unknown course).
+  const course = /^\d{1,15}$/.test(text(form, 'course')) ? `&course=${text(form, 'course')}` : '';
   if (requestId && (decision === 'accepted' || decision === 'rejected')) {
-    await reviewRequest(await getDb(), admin.id, requestId, decision, text(form, 'note'));
-    redirect(`/admin?status=${decision}&id=${requestId}&done=1#request`); // show the request in its new list, still open
+    const result = await reviewRequest(await getDb(), admin.id, requestId, decision, text(form, 'note'));
+    if (result === 'conflict') redirect(`/admin?status=${from}${course}&id=${requestId}&conflict=1#request`);
+    redirect(`/admin?status=${decision}${course}&id=${requestId}&done=1#request`); // show the request in its new list, still open
   }
-  redirect(`/admin?status=${from}`);
+  redirect(`/admin?status=${from}${course}`);
 }
 
-export type QuestionState = { error?: string; saved: number } | undefined;
+/** «إبلاغ عبر واتساب» was pressed: the browser opens wa.me itself; this only writes the audit line (id, no phone). */
+export async function notifiedAction(requestId: unknown) {
+  const admin = await requireAdmin();
+  if (typeof requestId !== 'number' || !Number.isSafeInteger(requestId) || requestId <= 0) return;
+  if (await recordNotified(await getDb(), admin.id, requestId)) refresh();
+}
+
+export type QuestionState ={ error?: string; saved: number } | undefined;
 
 export async function addQuestionAction(prev: QuestionState, form: FormData): Promise<QuestionState> {
   const admin = await requireAdmin();

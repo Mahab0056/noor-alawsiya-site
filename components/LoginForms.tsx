@@ -25,10 +25,13 @@ export function LoginForm() {
         <input {...fieldProps('password', { required: true, ltr: true })} type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} maxLength={200} />
       </Field>
       {state?.names ? (
+        <p className="vh" role="status">
+          أكثر من طالب مسجّل بهذا الرقم. اختر الاسم من القائمة ثم اضغط «دخول».
+        </p>
+      ) : null}
+      {state?.names ? (
         <fieldset className="field">
-          <legend className="lbl" role="status">
-            أكثر من طالب مسجّل بهذا الرقم. اختر الاسم ثم اضغط «دخول»:
-          </legend>
+          <legend className="lbl">أكثر من طالب مسجّل بهذا الرقم. اختر الاسم ثم اضغط «دخول»:</legend>
           <div className="opts">
             {state.names.map((name, i) => (
               <label className="opt" key={name}>

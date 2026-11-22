@@ -1,0 +1,34 @@
+'use server';
+
+import { refresh, updateTag } from 'next/cache';
+import { addCourse, setCourseAccepting, validateCourse, type CourseErrors } from '@/lib/courses';
+import { getDb } from '@/lib/db';
+import { PUBLIC_COURSES_TAG } from '@/lib/public-courses-cache';
+import { requireSuperAdmin } from '@/lib/session';
+
+// Every action checks for a super admin itself: a Server Action is a public endpoint.
+
+const text = (form: FormData, name: string) => {
+  const v = form.get(name);
+  return typeof v === 'string' ? v : '';
+};
+
+export async function setCourseOpenAction(form: FormData) {
+  const admin = await requireSuperAdmin();
+  const id = Number(text(form, 'id'));
+  if (Number.isSafeInteger(id) && id > 0) await setCourseAccepting(await getDb(), admin.id, id, text(form, 'open') === '1');
+  updateTag(PUBLIC_COURSES_TAG); // home and /courses show the change at once
+  refresh();
+}
+
+export type CourseState = { errors?: CourseErrors; error?: string; saved?: boolean } | undefined;
+
+export async function addCourseAction(_prev: CourseState, form: FormData): Promise<CourseState> {
+  const admin = await requireSuperAdmin();
+  const checked = validateCourse({ name: text(form, 'name'), teacher: text(form, 'teacher'), place: text(form, 'place'), startedOn: text(form, 'startedOn'), open: text(form, 'open') === 'on' });
+  if (!checked.ok) return { errors: checked.errors, error: 'راجع الحقول المعلّمة.' };
+  await addCourse(await getDb(), admin.id, checked.value);
+  updateTag(PUBLIC_COURSES_TAG);
+  refresh();
+  return { saved: true };
+}

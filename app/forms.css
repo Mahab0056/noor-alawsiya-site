@@ -65,13 +65,13 @@ fieldset.q > legend + * { clear: both; }
 .qrow { display: flex; gap: 10px; align-items: center; padding: 12px 22px; border-bottom: 1px solid var(--line); font-size: 14.5px; }
 .qrow:last-child { border-bottom: 0; }
 .qrow .sp { margin-inline-start: auto; display: flex; gap: 6px; align-items: center; flex: none; }
-.qrow.off b { color: var(--mute); font-weight: 500; }
+.qrow.off b { color: var(--mute); font-weight: 400; }
 .qrow form { display: flex; gap: 6px; }
 .qrow > div:not(.sp) { min-width: 0; }
 
 .req, .qh em { font-style: normal; color: var(--bad); }
 .qh { font-size: 16px; font-weight: 700; margin-bottom: 8px; display: flex; gap: 8px; }
-.qh .qn, .qrow .qn { color: var(--mute); font-weight: 500; }
+.qh .qn, .qrow .qn { color: var(--mute); font-weight: 400; }
 .q .field:last-child { margin-bottom: 0; }
 .q > label.opt { margin-top: 4px; }
 .reg-top a.sp { text-decoration: underline; text-underline-offset: 3px; }
@@ -98,4 +98,83 @@ fieldset.q > legend + * { clear: both; }
   .auth .box { padding: 24px 20px; }
   .qrow { display: grid; grid-template-columns: auto 1fr; align-items: start; padding: 14px 16px; }
   .qrow .sp { grid-column: 2; margin: 0; }
+}
+
+/* وصولية: الشبكة لا تتسع بمحتوى خلاياها (كان /admin/admins يفيض عن عرض الهاتف)، والأزرار الصغيرة تُمدَّد على الهاتف لتبلغ ٤٤ بكسل */
+.tacts .btn { white-space: normal; text-align: center; }
+@media (max-width: 900px) {
+  .btn.sm, .reg-top a.sp, .auth .alt a { min-height: 44px; display: inline-flex; align-items: center; }
+  .foot a { padding-block: 10px; }
+  .mtop .logo { min-height: 44px; }
+}
+@media (max-width: 1180px) {
+  .row > * { min-width: 0; } /* عمود واحد: لا يتّسع عنصره بمحتوى خلاياه */
+}
+@media (max-width: 900px) {
+  /* جدول المشرفين ثلاث خلايا لا خمس: بلا هذا تُوضع الثالثة في عمود ضمني فتوسّع الصفحة */
+  table.st.team tr { grid-template-columns: minmax(0, 1fr); grid-template-areas: none; }
+  table.st.team td:nth-child(n) { grid-area: auto; justify-self: stretch; }
+  .foot .end a { padding-block: 10px; display: inline-block; }
+}
+
+/* The step heading takes focus by script so screen readers announce the new step; a ring around it only looks broken. */
+.reg-main h2[tabindex='-1']:focus { outline: none; }
+
+/* «اطلب دورة ثانية» في حسابي */
+.creq { margin-top: 4px; }
+.creq .field:last-of-type { margin-bottom: 16px; }
+.creq .opt { min-height: 44px; }
+.creq .btn { min-height: 48px; }
+@media (max-width: 560px) {
+  .creq .btn { width: 100%; }
+}
+.tag.known { background: var(--y-soft); color: var(--ink); }
+
+/* التسجيل على الهاتف: إظهار كلمة المرور، «هو نفس الرقم»، وشاشة «وصل طلب التسجيل» */
+/* One column on a phone: the last field of a pair kept margin 0, so its hint touched the next label. */
+.q .two > .field { margin-bottom: 16px; }
+.pw { position: relative; }
+.pw .inp { padding-left: 86px; } /* the field is LTR with its text on the right: the button sits in the free left end */
+.pw button { position: absolute; left: 2px; top: 2px; bottom: 2px; min-width: 76px; padding: 0 12px; border: 0; border-radius: 10px; background: none; font: 600 14px var(--ui); color: var(--ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.pw button:focus-visible { outline: 3px solid var(--k); outline-offset: -3px; }
+.linkbtn.same { justify-self: start; min-height: 44px; font-size: 14.5px; font-weight: 600; text-align: start; }
+.card.done { display: flex; gap: 14px; align-items: flex-start; padding: 20px 22px; margin-bottom: 16px; border-color: var(--ok); background: var(--ok-bg); }
+.card.done .ic { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--ok); color: #fff; }
+.card.done h2 { font-size: 20px; margin-bottom: 4px; }
+.card.done p { font-size: 15px; }
+.card.done p + p { margin-top: 6px; }
+.who .tag.known, .hd .tag.known { margin-top: 4px; }
+.pre { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* روابط الحملات (/admin/campaigns) */
+.ltr-name { direction: ltr; unicode-bidi: isolate; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.95em; }
+.cq-url { display: block; direction: ltr; text-align: left; unicode-bidi: isolate; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; color: var(--mute); overflow-wrap: anywhere; margin-top: 4px; }
+.cq-todo { margin: 12px 22px 0; padding: 10px 12px; border-radius: 12px; background: var(--warn-bg); font-size: 13.5px; line-height: 1.7; }
+.cq-opt { align-items: start; }
+.cq-opt small { display: block; color: var(--mute); font-size: 13px; font-weight: 400; margin-top: 2px; }
+.cq-preview { display: grid; gap: 4px; margin-bottom: 16px; padding: 10px 12px; border: 1px dashed var(--line); border-radius: 12px; font-size: 14px; }
+.cq-preview .lbl { font-weight: 600; font-size: 14px; }
+.cq-preview .cq-url { color: var(--ink); margin: 0; }
+.cq { margin-bottom: 18px; }
+.cq:focus { outline: none; }
+.cq-body { display: grid; grid-template-columns: 240px 1fr; gap: 22px; padding: 16px 22px 22px; align-items: start; }
+.cq-img { width: 240px; height: 240px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.cq-side { display: grid; gap: 12px; min-width: 0; }
+.cq-side p { margin: 0; }
+.cq-where { display: flex; gap: 6px 8px; flex-wrap: wrap; align-items: center; font-size: 14.5px; }
+.cq-copy { display: grid; gap: 6px; }
+.cq-copy .lbl { font-weight: 600; font-size: 14px; }
+.cq-copy-row { display: flex; gap: 8px; }
+.cq-copy-row .inp { min-width: 0; flex: 1; font: 16px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.cq-dl { display: flex; gap: 8px; flex-wrap: wrap; }
+.cq-side .hint { font-size: 13px; color: var(--mute); line-height: 1.7; }
+.qrow.sel { background: var(--y-soft); }
+@media (max-width: 900px) {
+  .cq-body { grid-template-columns: 1fr; justify-items: center; padding: 14px 16px 18px; }
+  .cq-side { width: 100%; }
+  .cq-dl .btn { flex: 1; }
+  .cq-todo { margin: 12px 16px 0; }
+  /* The row has no number column: text on top at full width, the three buttons under it. */
+  .qrow.cq-row { display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+  .qrow.cq-row .sp { margin: 0; }
 }

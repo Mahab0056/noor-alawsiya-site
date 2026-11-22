@@ -6,6 +6,7 @@ import { RegisterForm } from '@/components/RegisterForm';
 import { Logo } from '@/components/SiteChrome';
 import { CONTACT } from '@/lib/data';
 import { getDb } from '@/lib/db';
+import { pickCourse } from '@/lib/form-rules';
 import { listOpenCourses, listQuestions } from '@/lib/registration';
 import { currentStudent } from '@/lib/session';
 
@@ -54,5 +55,10 @@ async function Register({ searchParams }: Pick<PageProps<'/register'>, 'searchPa
   const wanted = typeof params.course === 'string' ? params.course : undefined;
   // The year is read on the server (Baghdad time) so the under-18 rule matches what the server will enforce.
   const thisYear = Number(new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: 'Asia/Baghdad' }).format(new Date()));
-  return <RegisterForm courses={courses} questions={questions} preselect={courses.find((c) => c.name === wanted)?.id} thisYear={thisYear} />;
+  // `?course=` carries a course id or name. One open course needs no choosing, unless the link asked for another one:
+  // then the form says that course is not open and leaves the choice to the parent.
+  const linked = pickCourse(courses, wanted);
+  const missed = Boolean(wanted?.trim()) && linked === undefined;
+  const preselect = linked ?? (courses.length === 1 && !missed ? courses[0].id : undefined);
+  return <RegisterForm courses={courses} questions={questions} preselect={preselect} courseMissed={missed} thisYear={thisYear} />;
 }

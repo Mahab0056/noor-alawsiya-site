@@ -2,9 +2,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CourseCard, TeacherGrid } from '@/components/Cards';
 import { Icon } from '@/components/Icon';
+import { JsonLd } from '@/components/JsonLd';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { ar, CONTACT, countOf, COURSES, DONE_COURSES, HOME_COURSES, MAHFAL_COURSES, OPEN_COURSES, TEACHERS } from '@/lib/data';
 import type { IconName } from '@/lib/icons';
+import { coursesCount, homeCourses } from '@/lib/public-courses';
+import { getPublicCourses } from '@/lib/public-courses-cache';
+import { SCHOOL_LD } from '@/lib/seo';
 
 const STATS: { icon: IconName; value: number; label: string }[] = [
   { icon: 'book', value: COURSES.length, label: 'دورة منذ ٢٠٢١' },
@@ -29,9 +33,12 @@ const TIMELINE: [string, string][] = [
   ['٢٠٢٦', 'دورات سكينة (ع) والسيدة نرجس (ع)، ودورة النغم بالطريقة العراقية مع الشيخ عباس المنشداوي.'],
 ];
 
-export default function Home() {
+export default async function Home() {
+  // Which courses take registrations now; null if the database cannot be read (the record alone, no badges).
+  const live = await getPublicCourses();
   return (
     <>
+      <JsonLd data={SCHOOL_LD} />
       <SiteHeader current="home" />
       <main id="main">
         <section className="hero">
@@ -72,7 +79,7 @@ export default function Home() {
             </div>
             <div className="stage">
               <div className="arch">
-                <Image src="/img/mushaf.jpg" alt="مصحف مفتوح على حامله في الجامع" fill sizes="(max-width: 900px) 84vw, 440px" priority />
+                <Image src="/img/mushaf.jpg" alt="مصحف مفتوح على حامله في الجامع" fill sizes="(max-width: 900px) 84vw, 440px" quality={60} priority />
               </div>
               <div className="float a">
                 <span className="ic">
@@ -119,12 +126,19 @@ export default function Home() {
             <div className="sec-h">
               <div>
                 <p className="eye">الدورات القائمة</p>
-                <h2>{countOf(OPEN_COURSES.length, 'دورات', 'دورة')} مفتوحة الآن</h2>
+                <h2>{countOf(OPEN_COURSES.length, 'دورات', 'دورة')} قائمة الآن</h2>
+                {live ? (
+                  <p className="mute open-sum">
+                    {live.open.length > 0
+                      ? `التسجيل من الموقع مفتوح الآن في ${coursesCount(live.open.length)}، والباقي اسأل عنه المدرسة على واتساب.`
+                      : 'التسجيل من الموقع مغلق الآن في كل الدورات. اسأل المدرسة على واتساب عن الدورة القادمة.'}
+                  </p>
+                ) : null}
               </div>
             </div>
             <div className="g3">
-              {HOME_COURSES.map((c) => (
-                <CourseCard key={c.name} course={c} />
+              {homeCourses(COURSES, HOME_COURSES, live).map((c) => (
+                <CourseCard key={c.name} course={c} openId={live?.openByName[c.name]} />
               ))}
             </div>
             <p style={{ textAlign: 'center', marginTop: 26 }}>

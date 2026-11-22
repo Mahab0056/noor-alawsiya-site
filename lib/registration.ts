@@ -1,6 +1,6 @@
 import 'server-only';
 import { hashPassword, normalizePhone } from './auth';
-import { isMinor, MAX_ACCOUNTS_PER_PHONE, visibleQuestions, MAX_NAME, MAX_TEXT, MIN_PASSWORD, NO, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
+import { isMinor, isYearShape, MAX_ACCOUNTS_PER_PHONE, visibleQuestions, MAX_NAME, MAX_TEXT, MIN_PASSWORD, NO, phoneError, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
 import type { Db } from './db';
 
 /**
@@ -83,13 +83,13 @@ export function validateStudent(input: RegistrationInput, now = new Date()) {
 
   const birthYear = toYear(input.birthYear);
   const year = now.getFullYear();
-  if (!Number.isInteger(birthYear)) errors.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
+  if (!isYearShape(input.birthYear)) errors.birthYear = 'اكتب سنة الميلاد بأربعة أرقام.';
   else if (birthYear < year - 90 || birthYear > year - 5) errors.birthYear = 'سنة الميلاد غير صحيحة.';
 
   const phone = normalizePhone(input.phone);
-  if (!phone) errors.phone = 'اكتب رقم هاتف عراقياً صحيحاً، مثل 07701234567.';
+  if (!phone) errors.phone = phoneError(input.phone)!;
 
-  if (input.password.length < MIN_PASSWORD) errors.password = 'كلمة المرور ٨ خانات على الأقل.';
+  if (input.password.length < MIN_PASSWORD) errors.password = 'كلمة المرور ٨ أحرف على الأقل.';
   else if (input.password.length > 200) errors.password = 'كلمة المرور طويلة جداً.';
 
   const minor = !errors.birthYear && isMinor(birthYear, now);
@@ -100,7 +100,7 @@ export function validateStudent(input: RegistrationInput, now = new Date()) {
     if (guardianName.length < 5) errors.guardianName = 'اكتب اسم ولي الأمر.';
     else if (guardianName.length > MAX_NAME) errors.guardianName = 'الاسم طويل جداً.';
     guardianPhone = normalizePhone(input.guardianPhone);
-    if (!guardianPhone) errors.guardianPhone = 'اكتب رقم هاتف ولي الأمر.';
+    if (!guardianPhone) errors.guardianPhone = phoneError(input.guardianPhone, 'guardian')!;
     if (!input.guardianConsent) errors.guardianConsent = 'التسجيل لمن هو دون ١٨ سنة يحتاج موافقة ولي الأمر.';
   }
   return { errors, clean: { fullName, birthYear, phone: phone ?? '', guardianName, guardianPhone, minor } satisfies CleanStudent };

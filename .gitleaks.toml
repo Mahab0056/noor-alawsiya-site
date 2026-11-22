@@ -1,0 +1,27 @@
+# gitleaks config: the default rules, plus two narrow allowlists for reviewed false positives in tests.
+# Reviewed 19/11/2026 (awsiya-ci-gate). Each one is limited to one test file AND one value shape,
+# so a real key anywhere else (or a different-looking value in these files) is still caught.
+# One-off historical hits are pinned by fingerprint in .gitleaksignore.
+
+[extend]
+useDefault = true
+
+# tests/schema.test.ts lists the migration file names ('0001_init.sql', '0002_auth.sql', ...).
+# generic-api-key reads the name after 'auth' as a key. It changes with every new migration,
+# so a per-commit fingerprint would turn CI red each time.
+[[allowlists]]
+description = "migration file names in the schema test"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^tests/schema\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^[0-9]{4}_[a-z0-9_]+\.sql$''']
+
+# Unit tests pass a made-up Resend key ('re_test_...') to mailConfig(). Real keys are not 're_test_'.
+[[allowlists]]
+description = "placeholder Resend key in unit tests"
+targetRules = ["generic-api-key"]
+condition = "AND"
+paths = ['''^tests/[a-z0-9_-]+\.test\.ts$''']
+regexTarget = "secret"
+regexes = ['''^re_test_[a-z0-9]{1,16}$''']
