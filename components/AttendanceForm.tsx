@@ -30,16 +30,6 @@ export function AttendanceForm({ courseId, day, rows, readOnly }: { courseId: nu
     <form action={action} className="att" noValidate>
       <input type="hidden" name="course" value={courseId} />
       <input type="hidden" name="date" value={day} />
-      {state?.error ? (
-        <p className="alert bad" role="alert">
-          {state.error}
-        </p>
-      ) : null}
-      {state?.ok ? (
-        <p className="alert ok" role="status">
-          {state.ok}
-        </p>
-      ) : null}
       {readOnly ? null : (
         <p className="att-hint mute">
           {saved ? 'هذا ما سُجِّل لهذا اليوم. غيّر ما تريد ثم اضغط «حفظ الحضور».' : 'الكل مؤشَّر «حاضر». غيّر الغائب والمجاز فقط، ثم اضغط «حفظ الحضور».'} الملاحظة يقرؤها الطالب وولي أمره في «حسابي»: اكتب عن الدرس فقط.
@@ -71,7 +61,7 @@ export function AttendanceForm({ courseId, day, rows, readOnly }: { courseId: nu
                   id={noteId}
                   name={noteId}
                   className="inp att-note"
-                  placeholder="ملاحظة (اختيارية)"
+                  placeholder={readOnly ? undefined : 'ملاحظة (اختيارية)'}
                   maxLength={MAX_NOTE}
                   value={notes[r.studentId] ?? ''}
                   onChange={(e) => setNotes({ ...notes, [r.studentId]: e.target.value })}
@@ -83,9 +73,20 @@ export function AttendanceForm({ courseId, day, rows, readOnly }: { courseId: nu
           );
         })}
       </ol>
-      <div className="att-bar">
+      {/* The messages sit in the bar, next to the button the teacher just pressed: at the top of a long list they would be off screen. */}
+      <div className={`att-bar${readOnly ? ' still' : ''}`}>
+        {state?.error ? (
+          <p className="alert bad" role="alert">
+            {state.error}
+          </p>
+        ) : null}
+        {state?.ok ? (
+          <p className="alert ok" role="status">
+            {state.ok}
+          </p>
+        ) : null}
         <p className="mute" aria-live="polite">
-          حاضر {ar(count('present'))} · غائب {ar(count('absent'))} · مجاز {ar(count('excused'))}
+          حاضر {ar(count('present'))}، غائب {ar(count('absent'))}، مجاز {ar(count('excused'))}
         </p>
         {readOnly ? null : (
           <button className="btn k" type="submit" disabled={pending}>

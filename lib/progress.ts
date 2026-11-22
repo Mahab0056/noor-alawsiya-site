@@ -29,6 +29,10 @@ const MAX_BACK_DAYS = 366;
 /** Roles that may sign in to the admin panel's other screens. A teacher sees only «الحضور». */
 export const isTeacherRole = (role: AdminRole) => role === 'teacher';
 
+const DIGITS = new Intl.NumberFormat('ar-EG', { useGrouping: false });
+/** «طالب واحد» / «طالبان» / «٣ طلاب» / «١١ طالباً»: the counted noun agrees with the number. */
+export const pupilsText = (n: number) => (n === 1 ? 'طالب واحد' : n === 2 ? 'طالبان' : `${DIGITS.format(n)} ${n >= 3 && n <= 10 ? 'طلاب' : 'طالباً'}`);
+
 // ---------------------------------------------------------------- Baghdad dates (YYYY-MM-DD)
 
 const YMD = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Baghdad', year: 'numeric', month: '2-digit', day: '2-digit' });

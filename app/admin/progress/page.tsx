@@ -59,7 +59,7 @@ async function Courses() {
                   <b>{c.name}</b>
                   <div className="qmeta">
                     <span className="mute">{c.teacher}</span>
-                    <span className={`tag${c.pupils ? ' ok' : ''}`}>{c.pupils ? `${ar(c.pupils)} طالب مقبول` : 'لا طلاب مقبولون بعد'}</span>
+                    <span className={`tag${c.pupils ? ' ok' : ''}`}>{c.pupils ? `مقبولون: ${ar(c.pupils)}` : 'لا طلاب مقبولون بعد'}</span>
                     <span className="mute">{c.lastOn ? `آخر حلقة مسجّلة: ${formatDay(c.lastOn, today)}` : 'لم تُسجَّل حلقة بعد'}</span>
                   </div>
                 </div>

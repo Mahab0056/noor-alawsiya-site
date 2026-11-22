@@ -132,9 +132,9 @@ function Progress({ p, firstName }: { p: PupilCourse; firstName: string }) {
           <p className="mute">لم يُسجَّل حضور بعد. يسجّل الأستاذ الحضور بعد كل حلقة، ويظهر هنا أول ما يسجّله. لا شيء مطلوب منك الآن.</p>
         ) : (
           <p className="pg-sum">
-            حضر {firstName} {ar(p.present)} من {ar(total)} {total === 1 ? 'حلقة مسجّلة' : 'حلقات مسجّلة'}
-            {p.absent ? `، وغاب ${ar(p.absent)}` : ''}
-            {p.excused ? `، ومجاز في ${ar(p.excused)}` : ''}.
+            حضر {firstName} {ar(p.present)} من {ar(total)} {total === 1 ? 'حلقة مسجّلة' : 'حلقات مسجّلة'}.
+            {p.absent ? ` غائب: ${ar(p.absent)}.` : ''}
+            {p.excused ? ` مجاز: ${ar(p.excused)}.` : ''}
           </p>
         )}
       </div>

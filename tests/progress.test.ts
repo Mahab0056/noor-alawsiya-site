@@ -8,7 +8,7 @@ import { reviewRequest } from '@/lib/admin';
 import { resetDbForTests, type Db } from '@/lib/db';
 import { progressEnabled } from '@/lib/flags';
 import {
-  baghdadToday, cleanNote, deleteSession, getRoster, isDay, isTeacherRole, listRecordableCourses, listSessions, pupilProgress, recordAccess,
+  baghdadToday, cleanNote, deleteSession, getRoster, isDay, isTeacherRole, listRecordableCourses, listSessions, pupilProgress, pupilsText, recordAccess,
   saveAttendance, setCourseRecorder, weekStart, type EntryInput,
 } from '@/lib/progress';
 import { register, type RegistrationInput } from '@/lib/registration';
@@ -114,6 +114,10 @@ test('Baghdad dates: today, the Saturday week start, and strict day strings', ()
   assert.equal(weekStart('2026-11-20'), '2026-11-14');
   for (const bad of ['2026-02-30', '2026-11-2', '22/11/2026', '', null, 20261122]) assert.equal(isDay(bad), false);
   assert.equal(isDay('2024-02-29'), true);
+});
+
+test('pupil counts agree with the number', () => {
+  assert.deepEqual([1, 2, 3, 10, 11, 25].map(pupilsText), ['طالب واحد', 'طالبان', '٣ طلاب', '١٠ طلاب', '١١ طالباً', '٢٥ طالباً']);
 });
 
 test('the course teacher sees only the accepted pupils, by name only, and records them', async () => {

@@ -10,7 +10,7 @@ import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { progressEnabled } from '@/lib/flags';
 import {
-  baghdadToday, earliestDay, formatDay, getCourseName, getRoster, isDay, listAssignable, listCourseRecorders, listSessions, recordAccess,
+  baghdadToday, earliestDay, formatDay, getCourseName, getRoster, isDay, listAssignable, listCourseRecorders, listSessions, pupilsText, recordAccess,
 } from '@/lib/progress';
 import { requireRecorder } from '@/lib/session';
 
@@ -60,7 +60,7 @@ async function CourseDay({ params, searchParams }: Pick<PageProps<'/admin/progre
         <div>
           <h1>{course.name}</h1>
           <p>
-            {course.teacher} · {ar(roster.rows.length)} طالب مقبول
+            {course.teacher}، {roster.rows.length ? `${pupilsText(roster.rows.length)} مقبولون` : 'لا طلاب مقبولون بعد'}
           </p>
         </div>
         <div className="sp">
@@ -132,7 +132,7 @@ async function CourseDay({ params, searchParams }: Pick<PageProps<'/admin/progre
                     <Link href={`/admin/progress/${courseId}?date=${s.day}`} aria-current={s.day === day ? 'page' : undefined}>
                       <b>{formatDay(s.day, today)}</b>
                       <span className="mute">
-                        {ar(s.present)} حاضر · {ar(s.absent)} غائب{s.excused ? ` · ${ar(s.excused)} مجاز` : ''}
+                        حاضر {ar(s.present)}، غائب {ar(s.absent)}{s.excused ? `، مجاز ${ar(s.excused)}` : ''}
                       </span>
                     </Link>
                   </li>
