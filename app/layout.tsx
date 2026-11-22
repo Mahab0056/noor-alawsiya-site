@@ -24,6 +24,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
+    url: './', // each page's own address, like the canonical: WhatsApp and Facebook group shares by og:url
     locale: 'ar_IQ',
     siteName: 'مدرسة نور الأوصياء للدراسات القرآنية',
     images: [{ url: '/img/og.png', width: 1200, height: 630, alt: 'مدرسة نور الأوصياء للدراسات القرآنية، بغداد' }],

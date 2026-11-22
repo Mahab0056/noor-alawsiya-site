@@ -1,10 +1,10 @@
 import type { MetadataRoute } from 'next';
-import { COURSE_PAGES, coursePath } from '@/lib/share';
+import { getPublicCourses } from '@/lib/public-courses-cache';
+import { sitemapEntries } from '@/lib/seo';
 
-const ORIGIN = 'https://noor-alawsiya.com';
-
-// Public pages only. No lastModified: the site has no real edit dates to report.
-export default function sitemap(): MetadataRoute.Sitemap {
-  const pages = ['/', '/courses', '/register', '/privacy', ...COURSE_PAGES.map(({ slug }) => coursePath(slug))];
-  return pages.map((path) => ({ url: `${ORIGIN}${path}` }));
+// Public pages, plus the pages of the courses that take registrations now (lib/seo.ts sitemapEntries). It reads the
+// same cached view as the course pages, so opening or closing a course in «الدورات» changes it too.
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const live = await getPublicCourses();
+  return sitemapEntries(live?.openByName ?? null);
 }

@@ -69,7 +69,11 @@ export function courseSummary(course: Course): string {
 
 export const ogImagePath = (slug: string) => `${coursePath(slug)}/og.png`;
 
-/** Per-course tags. `openGraph` and `twitter` are written whole, because a page's object replaces the layout's. */
+/**
+ * Per-course tags. `openGraph` and `twitter` are written whole, because a page's object replaces the layout's.
+ * A course whose page says «تخرّجت» gets `noindex` (still `follow`): the link and its card keep working when shared,
+ * but search does not offer a finished course to parents looking for one to join.
+ */
 export function courseMetadata(course: Course, slug: string): Metadata {
   const title = course.name;
   const description = courseSummary(course);
@@ -79,6 +83,7 @@ export function courseMetadata(course: Course, slug: string): Metadata {
     title,
     description,
     alternates: { canonical: url },
+    ...(course.status === 'done' ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       type: 'website',
       locale: 'ar_IQ',

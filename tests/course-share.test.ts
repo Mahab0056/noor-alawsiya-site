@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import sitemap from '../app/sitemap';
 import { COURSES } from '../lib/data';
 import { shapeArabic, visualWord, visualWords } from '../lib/og-arabic';
 import {
@@ -138,9 +137,7 @@ test('the description says only what the record says: a missing fact is left out
   for (const { course } of COURSE_PAGES) assert.doesNotMatch(courseSummary(course), /null|undefined|،،|، \./, course.name);
 });
 
-test('the sitemap lists every course page; the card route and page are static, with no cookie or tracking script', () => {
-  const urls = sitemap().map((e) => e.url);
-  for (const { slug } of COURSE_PAGES) assert.ok(urls.includes(`${ORIGIN}/courses/${slug}`), slug);
+test('the card route and page are static, with no cookie or tracking script (the sitemap is in course-seo.test.ts)', () => {
   const route = readFileSync('app/courses/[slug]/og.png/route.tsx', 'utf8');
   assert.match(route, /export function generateStaticParams/);
   assert.match(route, /from 'next\/og'/);

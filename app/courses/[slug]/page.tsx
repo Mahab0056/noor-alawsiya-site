@@ -5,10 +5,12 @@ import { Suspense } from 'react';
 import { NotStated } from '@/components/Cards';
 import { CourseRegisterLink } from '@/components/CourseRegisterLink';
 import { Icon } from '@/components/Icon';
+import { JsonLd } from '@/components/JsonLd';
 import { ShareCourse } from '@/components/ShareCourse';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { CONTACT, KIND_TAG } from '@/lib/data';
 import { getPublicCourses } from '@/lib/public-courses-cache';
+import { courseLd } from '@/lib/seo';
 import { COURSE_PAGES, courseBySlug, courseMetadata, registerHref } from '@/lib/share';
 
 // One page per course in the record, built at `next build` (no database read there). Any other slug renders notFound().
@@ -41,9 +43,11 @@ export default async function CoursePage({ params }: PageProps<'/courses/[slug]'
   const live = await getPublicCourses();
   const openId = live?.openByName[course.name]; // the database: takes new students now
   const registerLabel = 'سجّل في هذه الدورة';
+  const ld = courseLd(course, slug, openId); // Course data only while it takes registrations and is not «تخرّجت»
 
   return (
     <>
+      {ld ? <JsonLd data={ld} /> : null}
       <SiteHeader current="courses" />
       <main id="main">
         <section className="phead">
