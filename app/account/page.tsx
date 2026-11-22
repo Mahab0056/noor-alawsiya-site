@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { logoutAction } from '@/app/actions';
 import { CourseRequestForm } from '@/components/CourseRequestForm';
+import { Icon } from '@/components/Icon';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { courseRequestContext, MAX_ACCOUNT_REQUESTS_PER_DAY } from '@/lib/course-requests';
 import { ar, CONTACT } from '@/lib/data';
@@ -54,6 +55,21 @@ async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchPara
           </button>
         </form>
       </div>
+      {/* Straight after registering. Shown only while a request is waiting, so an old link cannot say «وصل» about nothing. */}
+      {params.new === '1' && requests.some((r) => r.status === 'pending') ? (
+        <section className="card done" role="status" aria-labelledby="done-title">
+          <span className="ic" aria-hidden="true">
+            <Icon name="check" />
+          </span>
+          <div>
+            <h2 id="done-title">وصل طلب التسجيل</h2>
+            <p>تراجع إدارة المدرسة الطلب، وتظهر النتيجة في هذه الصفحة.</p>
+            <p>
+              للعودة إليها لاحقاً: ادخل برقم الهاتف <b className="num">{student.phone}</b> وكلمة المرور التي اخترتها.
+            </p>
+          </div>
+        </section>
+      ) : null}
       {params.sent === '1' ? (
         <p className="alert ok" role="status">
           وصل طلبك الجديد إلى إدارة المدرسة، وتجده في القائمة أدناه.
