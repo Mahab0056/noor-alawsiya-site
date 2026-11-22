@@ -110,11 +110,11 @@ function DuplicateBox({ request, hints, view }: { request: RequestDetail; hints:
       <h3 id="dup-title">{request.status === 'duplicate' ? 'أُغلق كطلب مكرر' : 'يمكن مكرر'}</h3>
       {original !== null ? (
         <p className="hint">
-          {request.status === 'duplicate' ? 'نسخة من الطلب ' : 'وصل والطلب '}
+          {request.status === 'duplicate' ? 'نسخة من الطلب ' : 'وصل بعد الطلب '}
           <a href={`${queueHref({ status: 'pending', courseId: view.courseId, sort: 'oldest' }, { id: original })}#request`} className="num">
             {num(original)}
           </a>
-          {request.status === 'duplicate' ? '. لم يُحسب رفضاً ولم تُرسل رسالة.' : ' ينتظر للدورة نفسها على رقم الهاتف نفسه (أرسلت العائلة الاستمارة مرة ثانية).'}
+          {request.status === 'duplicate' ? '. لم يُحسب رفضاً ولم تُرسل رسالة.' : '، وهو ينتظر للدورة نفسها على رقم الهاتف نفسه: يبدو أن العائلة أرسلت الاستمارة مرة ثانية.'}
         </p>
       ) : null}
       {hints.length ? (
