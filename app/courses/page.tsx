@@ -2,9 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { CourseCard, NotStated, TeacherGrid } from '@/components/Cards';
 import { JsonLd } from '@/components/JsonLd';
+import { ShareCourse } from '@/components/ShareCourse';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { coursesLd } from '@/lib/seo';
 import { getPublicCourses } from '@/lib/public-courses-cache';
+import { courseSlug, coursePath } from '@/lib/share';
 import { ar, countOf, COURSES, DONE_COURSES, OPEN_COURSES, TEACHERS, type CourseStatus } from '@/lib/data';
 
 export const metadata: Metadata = {
@@ -75,7 +77,7 @@ export default async function CoursesPage() {
                     return (
                     <tr key={c.name}>
                       <td data-l="">
-                        <b>{c.name}</b>
+                        <b id={courseSlug(c) ? `c-${courseSlug(c)}` : undefined}>{courseSlug(c) ? <Link href={coursePath(courseSlug(c)!)} prefetch={false}>{c.name}</Link> : c.name}</b>
                         <small>{c.kindLabel ?? <NotStated />}</small>
                         {openId !== undefined ? (
                           <span className="reg-row">
@@ -88,6 +90,7 @@ export default async function CoursesPage() {
                             </Link>
                           </span>
                         ) : null}
+                        {courseSlug(c) ? <ShareCourse compact name={c.name} slug={courseSlug(c)!} describedBy={`c-${courseSlug(c)}`} /> : null}
                       </td>
                       <td data-l="الأستاذ">{c.teacher}</td>
                       <td data-l="المكان">{c.place ?? <NotStated />}</td>
