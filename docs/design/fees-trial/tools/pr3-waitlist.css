@@ -1,0 +1,11 @@
+/* Copied from PR #3 (wave/awsiya-waitlist-2011r-20261120 @ ce2ab94, app/forms.css) so the mock-up can draw its form.
+   The build does not need this file: the rules arrive with PR #3. */
+.hp { position: absolute; inset-inline-start: -10000px; width: 1px; height: 1px; overflow: hidden; }
+.wl-form .opt { align-items: flex-start; line-height: 1.6; }
+.wl-form .opt input { margin-top: 2px; }
+.wl-form .btn { min-height: 48px; }
+.wl-done { background: var(--ok-bg); border-radius: 14px; padding: 14px 16px; display: grid; gap: 6px; font-size: 14.5px; line-height: 1.7; }
+.wl-done b { color: var(--ok); font-size: 16px; }
+@media (max-width: 900px) {
+  .wl-form .btn { width: 100%; }
+}

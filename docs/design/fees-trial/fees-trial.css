@@ -1,0 +1,78 @@
+/* ---------- صفحة الدورة: «الرسوم» و«حصة تجريبية» (تصميم awsiya-dev-fees-trial-design-2120) ----------
+   Proposed additions to app/site.css. They use only the v2 tokens in app/globals.css (no new colour).
+   A stated fact is drawn strong (black panel, yellow figure). A missing fact is drawn quiet (dashed ivory panel).
+   Blocks go inside `.cpage`, after `.cfacts` and before `.cshare`, in this DOM order: fees, trial (or waitlist). */
+
+.fx { padding: 20px 24px 22px; display: grid; gap: 14px; align-content: start; container-type: inline-size; }
+.fx-h { display: flex; align-items: center; gap: 12px; }
+.fx-h h2 { font-size: 20px; }
+.fx-h .tag { margin-inline-start: auto; }
+.fx-ic { width: 40px; height: 40px; border-radius: 12px; background: var(--y-soft); color: var(--k); display: grid; place-items: center; flex: none; }
+.fx p { font-size: 15px; line-height: 1.7; }
+
+/* The answer itself. `.on` = the school stated it; `.na` = «غير مذكور». */
+.fx-v { border-radius: 14px; padding: 14px 18px 16px; display: grid; gap: 2px; }
+.fx-v b { display: block; font-size: 20px; line-height: 1.4; }
+.fx-v span { font-size: 14.5px; line-height: 1.6; }
+.fx-v.on { background: var(--k) var(--pat); color: #fff; }
+.fx-v.on b { color: var(--y); font-size: 34px; line-height: 1.3; }
+.fx-v.on b small { font-size: 16px; font-weight: 600; color: #fff; margin-inline-start: 6px; }
+.fx-v.on span { color: #d5d5d5; }
+.fx-v.na { background: #fbfaf3; border: 1.5px dashed #b9b39a; }
+.fx-v.na span { color: var(--mute); }
+
+/* Label and value rows, same rhythm as `.cfacts dl`. */
+.fx-d { margin: 0; }
+.fx-d div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 15px; line-height: 1.6; }
+.fx-d div:first-child { padding-top: 0; }
+.fx-d div:last-child { border-bottom: 0; padding-bottom: 0; }
+.fx-d dt { color: var(--mute); font-size: 13.5px; padding-top: 2px; }
+.fx-d dd { margin: 0; font-weight: 600; }
+.fx-d dd .na { font-weight: 400; }
+
+.fx-a { display: grid; gap: 8px; justify-items: start; }
+.fx .btn { min-height: 48px; white-space: normal; text-align: center; }
+.fx .btn.o { background: transparent; }
+.fx-hint, .fx-u { font-size: 13px !important; color: var(--mute); line-height: 1.6; }
+
+/* Both facts missing: one card with two rows and one question, instead of two half-empty cards. */
+.fx-both .fx-d div { grid-template-columns: 1fr auto; align-items: center; }
+.fx-both .fx-d dt { color: var(--ink); font-size: 15px; font-weight: 600; padding: 0; display: flex; align-items: center; gap: 10px; }
+.fx-both .fx-d dt svg { color: var(--mute); }
+.fx-both .fx-d dd { font-weight: 400; }
+
+/* Registration closed: the waitlist form of PR #3 opens in place. */
+.fx-wait summary { list-style: none; cursor: pointer; }
+.fx-wait summary::-webkit-details-marker { display: none; }
+.fx-wait summary:focus-visible { outline: 3px solid var(--k); outline-offset: 3px; box-shadow: 0 0 0 6px var(--y); }
+.fx-wait details[open] summary { margin-bottom: 16px; }
+.fx-wait details[open] summary .more, .fx-wait details:not([open]) summary .less { display: none; }
+
+/* Wide card (tablet, or the main column on desktop): the answer on one side, the rows or the action beside it.
+   Container queries: a browser without them keeps the stacked phone layout, which works at every width. */
+@container (min-width: 600px) {
+  .fx-b { display: grid; grid-template-columns: minmax(220px, 0.8fr) 1.2fr; gap: 20px; align-items: center; }
+  .fx-trial .fx-b, .fx-both .fx-b { grid-template-columns: 1fr auto; }
+  .fx-b > .fx-a .btn { white-space: nowrap; }
+}
+@container (max-width: 599.98px) {
+  .fx-b { display: grid; gap: 14px; }
+  .fx .btn { width: 100%; }
+}
+@media (max-width: 900px) {
+  .fx { padding: 18px 18px 20px; }
+}
+@media (max-width: 380px) {
+  .fx-v.on b { font-size: 30px; }
+}
+
+/* The same two fields in the admin «الدورات» form. */
+.fx-set { border: 1.5px solid var(--line); border-radius: 14px; padding: 16px 16px 4px; margin-bottom: 16px; }
+.fx-set > legend { float: inline-start; width: 100%; font-weight: 700; font-size: 16px; margin-bottom: 10px; }
+.fx-set > legend + * { clear: both; }
+.fx-set .opts { margin-bottom: 16px; }
+.fx-set .opt { min-height: 48px; }
+.fx-set .sub { border-inline-start: 3px solid var(--k); padding-inline-start: 14px; }
+.fx-miss { display: inline-flex; align-items: center; gap: 6px; }
+/* The row buttons of «الدورات» reach 44 px on every width (they were 37 px above 900 px). */
+.qrow .sp .btn.sm { min-height: 44px; display: inline-flex; align-items: center; }

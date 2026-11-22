@@ -1,0 +1,14 @@
+/* Board furniture only: the caption above each mock-up page and the grid of the states sheet. Not part of the product. */
+.board-cap { background: #2b2b6b; color: #fff; font: 600 13px/1.6 var(--ui); padding: 6px 14px; text-align: center; }
+body.sheet main { padding: 20px 18px 40px; display: grid; gap: 26px; }
+.st-h { font-size: 18px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+.st-h::before { content: ""; width: 22px; height: 3px; background: var(--y); border-radius: 2px; box-shadow: 0 0 0 1px var(--k); }
+.st-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+.st { margin: 0; width: 339px; display: grid; gap: 8px; }
+.st figcaption { font-size: 12.5px; font-weight: 600; color: var(--mute); }
+body.adm .st { width: min(520px, 100%); }
+body.adm .qlist { padding-top: 0; }
+@media (max-width: 420px) {
+  body.sheet main { padding-inline: 18px; }
+  .st { width: 100%; }
+}
