@@ -2,6 +2,7 @@ import 'server-only';
 import { hashPassword, normalizePhone } from './auth';
 import { isMinor, isYearShape, MAX_ACCOUNTS_PER_PHONE, visibleQuestions, MAX_NAME, MAX_TEXT, MIN_PASSWORD, NO, phoneError, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
 import type { Db } from './db';
+import { duplicateHintsOn, familyPhones, waitingCopyOf } from './duplicates';
 
 /**
  * Registration: the questionnaire the admin defines, validation of a submission,
@@ -108,10 +109,11 @@ export function validateStudent(input: RegistrationInput, now = new Date()) {
 
 export const CONSENT_VERSION = '2026-11-18';
 
-export type RegisterResult = { ok: true; studentId: number; registrationId: number } | { ok: false; errors: FieldErrors };
+/** copyOf: with DUPLICATE_HINTS on, the earlier request still waiting for this course on the same phone (lib/duplicates.ts). */
+export type RegisterResult = { ok: true; studentId: number; registrationId: number; copyOf: number | null } | { ok: false; errors: FieldErrors };
 
 /** Validates everything and, if valid, stores the student, the registration and the answers together. */
-export async function register(db: Db, input: RegistrationInput): Promise<RegisterResult> {
+export async function register(db: Db, input: RegistrationInput, { duplicateHints = duplicateHintsOn() }: { duplicateHints?: boolean } = {}): Promise<RegisterResult> {
   const student = validateStudent(input);
   const questions = await listQuestions(db);
   const answers = validateAnswers(questions, input.answers);
@@ -135,11 +137,15 @@ export async function register(db: Db, input: RegistrationInput): Promise<Regist
        values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
       [s.fullName, s.birthYear, s.phone, passwordHash, s.guardianName, s.guardianPhone, s.minor ? new Date() : null, s.minor ? CONSENT_VERSION : null]
     );
-    const [reg] = await t.query<{ id: string }>('insert into registrations (student_id, course_id) values ($1, $2) returning id', [st.id, course!.id]);
+    // A family sending the form again: the request is still stored (nothing is lost) and stays in the queue, marked as a copy.
+    const copyOf = duplicateHints ? await waitingCopyOf(t, course!.id, familyPhones(s.phone, s.guardianPhone)) : null;
+    const [reg] = copyOf
+      ? await t.query<{ id: string }>('insert into registrations (student_id, course_id, duplicate_of) values ($1, $2, $3) returning id', [st.id, course!.id, copyOf])
+      : await t.query<{ id: string }>('insert into registrations (student_id, course_id) values ($1, $2) returning id', [st.id, course!.id]);
     for (const [questionId, answer] of Object.entries(answers.clean)) {
       await t.query('insert into registration_answers (registration_id, question_id, answer) values ($1, $2, $3)', [reg.id, questionId, JSON.stringify(answer)]);
     }
-    return { ok: true as const, studentId: Number(st.id), registrationId: Number(reg.id) };
+    return { ok: true as const, studentId: Number(st.id), registrationId: Number(reg.id), copyOf };
   });
   try {
     return await store();
@@ -150,16 +156,18 @@ export async function register(db: Db, input: RegistrationInput): Promise<Regist
   }
 }
 
-export type RegistrationStatus = 'pending' | 'accepted' | 'rejected';
-export type StudentRegistration = { id: number; course: string; teacher: string; status: RegistrationStatus; adminNote: string | null; createdAt: Date; reviewedAt: Date | null };
+/** 'duplicate' (0014): closed by an admin as a copy of another request. Not a rejection. */
+export type RegistrationStatus = 'pending' | 'accepted' | 'rejected' | 'duplicate';
+/** copy: stored as a copy of an earlier request (duplicate_of), whether still waiting or closed. */
+export type StudentRegistration = { id: number; course: string; teacher: string; status: RegistrationStatus; adminNote: string | null; createdAt: Date; reviewedAt: Date | null; copy: boolean };
 
 /** What a student sees about their own requests. */
 export async function listStudentRegistrations(db: Db, studentId: number) {
-  const rows = await db.query<{ id: string; course: string; teacher: string; status: RegistrationStatus; admin_note: string | null; created_at: Date; reviewed_at: Date | null }>(
-    `select r.id, c.name as course, c.teacher, r.status, r.admin_note, r.created_at, r.reviewed_at
+  const rows = await db.query<{ id: string; course: string; teacher: string; status: RegistrationStatus; admin_note: string | null; created_at: Date; reviewed_at: Date | null; copy: boolean }>(
+    `select r.id, c.name as course, c.teacher, r.status, r.admin_note, r.created_at, r.reviewed_at, (r.duplicate_of is not null) as copy
      from registrations r join courses c on c.id = r.course_id
      where r.student_id = $1 order by r.created_at desc`,
     [studentId]
   );
-  return rows.map((r): StudentRegistration => ({ id: Number(r.id), course: r.course, teacher: r.teacher, status: r.status, adminNote: r.admin_note, createdAt: new Date(r.created_at), reviewedAt: r.reviewed_at ? new Date(r.reviewed_at) : null }));
+  return rows.map((r): StudentRegistration => ({ id: Number(r.id), course: r.course, teacher: r.teacher, status: r.status, adminNote: r.admin_note, createdAt: new Date(r.created_at), reviewedAt: r.reviewed_at ? new Date(r.reviewed_at) : null, copy: r.copy }));
 }

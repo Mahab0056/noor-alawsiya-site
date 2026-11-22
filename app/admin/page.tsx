@@ -1,16 +1,17 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { reviewAction } from '@/app/admin/actions';
+import { duplicateAction, reviewAction } from '@/app/admin/actions';
 import { AdminShell } from '@/components/AdminShell';
 import { Icon } from '@/components/Icon';
 import { NotifyWhatsAppLink } from '@/components/NotifyWhatsApp';
 import { countRequests, getRequest, lastNotifiedAt, listCourseFilterOptions, listRequests, oldestPendingAt, type RequestDetail } from '@/lib/admin';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
+import { duplicateHints, duplicateHintsOn, type DuplicateHint, type HintReason } from '@/lib/duplicates';
 import { formatDate, formatDateTime, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
 import { appOrigin } from '@/lib/mail';
-import { defaultSort, parseQueueView, pendingSummary, queueHref, STATUSES, WAIT_TAG, waitBadgeText, waitLevel } from '@/lib/queue';
+import { defaultSort, parseQueueView, pendingSummary, queueHref, queueStatuses, STATUSES, WAIT_TAG, waitBadgeText, waitLevel, type QueueView } from '@/lib/queue';
 import type { RegistrationStatus } from '@/lib/registration';
 import { requireAdmin } from '@/lib/session';
 import { decisionMessage, DEFAULT_ORIGIN, notifyRecipient, whatsappLink } from '@/lib/whatsapp';
@@ -35,7 +36,7 @@ const siteOrigin = () => {
 
 /** «إبلاغ عبر واتساب»: shown once a request is accepted or rejected. Opens a prepared chat on the admin's own phone. */
 function NotifyBox({ request, notifiedAt }: { request: RequestDetail; notifiedAt: Date | null }) {
-  if (request.status === 'pending') return null;
+  if (request.status !== 'accepted' && request.status !== 'rejected') return null; // a closed copy sends nothing
   const { to, number } = notifyRecipient(request);
   const who = to === 'guardian' ? 'ولي الأمر' : 'الطالب';
   return (
@@ -88,6 +89,80 @@ function ExistingTag() {
   return <span className="tag known">طالب مسجّل</span>;
 }
 
+const REASON: Record<HintReason, string> = { phone: 'نفس رقم الهاتف', name: 'نفس الاسم وسنة الميلاد' };
+const num = (id: number) => `#${String(id).padStart(4, '0')}`;
+const requestHref = (view: QueueView, id: number, status: RegistrationStatus) => `${queueHref({ status, courseId: view.courseId, sort: defaultSort(status) }, { id })}#request`;
+
+/** «يمكن مكرر» (DUPLICATE_HINTS on): another open or recent request for the same course looks like the same family. */
+function DuplicateTag() {
+  return <span className="tag dup">يمكن مكرر</span>;
+}
+
+/**
+ * The request page: the other requests this one looks like a copy of, linked, and «اعتبره مكرر» for a waiting one.
+ * Nothing is merged or closed until an admin presses the button.
+ */
+function DuplicateBox({ request, hints, view }: { request: RequestDetail; hints: DuplicateHint[]; view: QueueView }) {
+  const original = request.duplicateOf;
+  if (hints.length === 0 && original === null) return null;
+  return (
+    <div className="dupbox" aria-labelledby="dup-title">
+      <h3 id="dup-title">{request.status === 'duplicate' ? 'أُغلق كطلب مكرر' : 'يمكن مكرر'}</h3>
+      {original !== null ? (
+        <p className="hint">
+          {request.status === 'duplicate' ? 'نسخة من الطلب ' : 'وصل والطلب '}
+          <a href={`${queueHref({ status: 'pending', courseId: view.courseId, sort: 'oldest' }, { id: original })}#request`} className="num">
+            {num(original)}
+          </a>
+          {request.status === 'duplicate' ? '. لم يُحسب رفضاً ولم تُرسل رسالة.' : ' ينتظر للدورة نفسها على رقم الهاتف نفسه (أرسلت العائلة الاستمارة مرة ثانية).'}
+        </p>
+      ) : null}
+      {hints.length ? (
+        <ul>
+          {hints.map((h) => (
+            <li key={h.id}>
+              <a href={requestHref(view, h.id, h.status)}>
+                <span className="num">{num(h.id)}</span> · {h.studentName}
+              </a>
+              <small>
+                {STATUS_LABEL[h.status]} · {formatDate(h.createdAt)} · {h.reasons.map((r) => REASON[r]).join('، ')}
+              </small>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {request.status === 'pending' && hints.length ? (
+        <form action={duplicateAction} className="dupact">
+          <input type="hidden" name="id" value={request.id} />
+          {view.courseId ? <input type="hidden" name="course" value={view.courseId} /> : null}
+          {hints.length === 1 ? (
+            <input type="hidden" name="of" value={hints[0].id} />
+          ) : (
+            <div className="field">
+              <label className="lbl" htmlFor="dup-of">
+                نسخة من
+              </label>
+              <select className="inp" id="dup-of" name="of" defaultValue={String(hints[0].id)}>
+                {hints.map((h) => (
+                  <option key={h.id} value={String(h.id)}>
+                    {num(h.id)} · {h.studentName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          <button className="btn w" type="submit" aria-describedby="dup-hint">
+            اعتبره مكرر
+          </button>
+          <p className="hint" id="dup-hint">
+            يُغلق هذا الطلب كنسخة{hints.length === 1 ? <> من <span className="num">{num(hints[0].id)}</span></> : null}. لا يُحسب رفضاً، ولا تُرسل أي رسالة، ولا يُحذف شيء.
+          </p>
+        </form>
+      ) : null}
+    </div>
+  );
+}
+
 async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParams'>) {
   const admin = await requireAdmin();
   const now = new Date(); // after requireAdmin: this render is per request, so the waiting times are current
@@ -96,7 +171,9 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
 
   const db = await getDb();
   const courses = await listCourseFilterOptions(db);
-  const asked = parseQueueView(params);
+  const hintsOn = duplicateHintsOn();
+  const statuses = queueStatuses(hintsOn);
+  const asked = parseQueueView(params, statuses);
   // An unknown course id shows every course rather than an empty list that looks like «no requests».
   const view = { ...asked, courseId: courses.some((c) => c.id === asked.courseId) ? asked.courseId : null };
   const status = view.status;
@@ -109,6 +186,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
     openId ? lastNotifiedAt(db, openId) : null,
   ]);
   const inTabs = tabCounts ?? counts;
+  const hints = hintsOn ? await duplicateHints(db, [...rows.map((r) => r.id), ...(open ? [open.id] : [])], now) : new Map<number, DuplicateHint[]>();
   const oldestLevel = oldest ? waitLevel(oldest, now) : 'fresh';
 
   return (
@@ -145,7 +223,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
       <div className="row">
         <div className="card">
           <nav className="tabs" aria-label="حالة الطلب">
-            {STATUSES.map((s) => (
+            {statuses.map((s) => (
               <Link key={s} href={queueHref({ status: s, courseId: view.courseId, sort: defaultSort(s) })} className={s === status ? 'on' : undefined} aria-current={s === status ? 'page' : undefined}>
                 {STATUS_LABEL[s]} <b>{ar(inTabs[s])}</b>
               </Link>
@@ -208,6 +286,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                             {r.hasGuardian ? ' · ولي الأمر موافق' : ''}
                           </small>
                           {r.existingStudent ? <ExistingTag /> : null}
+                          {hints.has(r.id) ? <DuplicateTag /> : null}
                         </span>
                       </div>
                     </td>
@@ -242,6 +321,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                   طلب رقم <span className="num">#{String(open.id).padStart(4, '0')}</span> · {open.course}
                 </small>
                 {open.existingStudent ? <ExistingTag /> : null}
+                {hints.has(open.id) ? <DuplicateTag /> : null}
               </div>
               <StatusTag status={open.status} />
             </div>
@@ -308,6 +388,17 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
                 حُفظ القرار، وسيراه الطالب في حسابه.
               </p>
             ) : null}
+            {params.done === 'dup' ? (
+              <p className="alert ok" role="status" style={{ margin: '12px 22px 0' }}>
+                أُغلق الطلب كنسخة مكررة. لم يُحسب رفضاً ولم تُرسل أي رسالة.
+              </p>
+            ) : null}
+            {params.dup === 'decided' || params.dup === 'stale' ? (
+              <p className="alert bad" role="alert" style={{ margin: '12px 22px 0' }}>
+                {params.dup === 'decided' ? 'لم يُغلق: هذا الطلب لم يعد ينتظر (قرّر فيه أدمن آخر).' : 'لم يُغلق: الطلب الآخر لم يعد يطابقه. راجع القائمة من جديد.'}
+              </p>
+            ) : null}
+            {hintsOn ? <DuplicateBox request={open} hints={hints.get(open.id) ?? []} view={view} /> : null}
             <NotifyBox request={open} notifiedAt={notifiedAt} />
             <form className="ft" action={reviewAction}>
               <input type="hidden" name="id" value={open.id} />

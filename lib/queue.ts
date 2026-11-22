@@ -59,6 +59,8 @@ export function pendingSummary(count: number, oldest: Date | null, now: Date): s
 // ---------------------------------------------------------------- list view: status, course, order (all from the URL)
 
 export const STATUSES: RegistrationStatus[] = ['pending', 'accepted', 'rejected'];
+/** The tabs. «مكرر» (requests closed as copies) only with DUPLICATE_HINTS on; off, the list is exactly as before. */
+export const queueStatuses = (duplicateHints: boolean): RegistrationStatus[] => (duplicateHints ? [...STATUSES, 'duplicate'] : STATUSES);
 export type QueueSort = 'oldest' | 'newest';
 export type QueueView = { status: RegistrationStatus; courseId: number | null; sort: QueueSort };
 
@@ -69,8 +71,8 @@ type Params = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (typeof v === 'string' ? v : undefined);
 
 /** Unknown or repeated values fall back to the defaults: pending, every course, the status's own order. */
-export function parseQueueView(params: Params): QueueView {
-  const status = STATUSES.find((s) => s === one(params.status)) ?? 'pending';
+export function parseQueueView(params: Params, statuses: RegistrationStatus[] = STATUSES): QueueView {
+  const status = statuses.find((s) => s === one(params.status)) ?? 'pending';
   const course = one(params.course);
   const courseId = course && /^\d{1,15}$/.test(course) && Number(course) > 0 ? Number(course) : null;
   const sort = one(params.sort) === 'oldest' ? 'oldest' : one(params.sort) === 'newest' ? 'newest' : defaultSort(status);
