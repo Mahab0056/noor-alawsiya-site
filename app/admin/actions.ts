@@ -2,7 +2,7 @@
 
 import { refresh } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { loginAdmin } from '@/lib/accounts';
+import { requestAdminCode, verifyAdminCode } from '@/lib/accounts';
 import { addQuestion, moveQuestion, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
 import { getDb } from '@/lib/db';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
@@ -22,16 +22,28 @@ const id = (form: FormData) => {
 const STATUSES: RegistrationStatus[] = ['pending', 'accepted', 'rejected'];
 const KINDS: QuestionKind[] = ['single', 'multi', 'yes_no', 'text'];
 
-export type AdminLoginState = { error: string } | undefined;
+// Login is in two steps, both through this one action: ask for a code, then send it back.
+// The address rides along in the form, so the second step is a plain post with no state to keep in sync.
+export type AdminLoginState = { step: 'email' | 'code'; email: string; error?: string } | undefined;
+
+const TOO_MANY = 'محاولات كثيرة. انتظر ربع ساعة ثم حاول مرة أخرى.';
 
 export async function adminLoginAction(_prev: AdminLoginState, form: FormData): Promise<AdminLoginState> {
-  const result = await loginAdmin(await getDb(), text(form, 'email'), text(form, 'password'), text(form, 'code').trim(), await clientIp());
+  const email = text(form, 'email').trim();
+  const ip = await clientIp();
+
+  if (text(form, 'intent') !== 'verify') {
+    const result = await requestAdminCode(await getDb(), email, ip);
+    if (result.ok) return { step: 'code', email };
+    return { step: 'email', email, error: result.reason === 'throttled' ? TOO_MANY : 'تعذّر إرسال الرمز. حاول بعد قليل.' };
+  }
+
+  const result = await verifyAdminCode(await getDb(), email, text(form, 'code'), ip);
   if (result.ok) {
     await startSession('admin', result.adminId);
     redirect('/admin');
   }
-  if (result.reason === 'throttled') return { error: 'محاولات كثيرة. انتظر ربع ساعة ثم حاول مرة أخرى.' };
-  return { error: 'بيانات الدخول أو رمز التحقق غير صحيح.' };
+  return { step: 'code', email, error: result.reason === 'throttled' ? TOO_MANY : 'الرمز غير صحيح أو انتهت صلاحيته.' };
 }
 
 export async function adminLogoutAction() {
