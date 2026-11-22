@@ -14,7 +14,12 @@ export function NotStated() {
   return <span className="na">غير مذكور</span>;
 }
 
-export function CourseCard({ course }: { course: Course }) {
+/**
+ * `openId` is the database id when the course takes registrations now (lib/public-courses.ts): the card then shows
+ * «التسجيل مفتوح» and a «سجّل» link that preselects the course. Every other course, and every course when the database
+ * could not be read, gets «اسأل» on WhatsApp: the record alone cannot say who takes new students.
+ */
+export function CourseCard({ course, openId }: { course: Course; openId?: number }) {
   const isNew = LATEST_YEAR !== '' && course.start?.includes(LATEST_YEAR);
   return (
     <article className="card course">
@@ -23,6 +28,12 @@ export function CourseCard({ course }: { course: Course }) {
           <Icon name={course.kind ? KIND_ICON[course.kind] : 'book'} size="l" />
         </span>
         <div className="tags">
+          {openId !== undefined ? (
+            <span className="tag ok">
+              <i />
+              التسجيل مفتوح
+            </span>
+          ) : null}
           {isNew ? <span className="tag y">جديد</span> : null}
           {course.kind ? <span className="tag">{KIND_TAG[course.kind]}</span> : null}
         </div>
@@ -50,8 +61,8 @@ export function CourseCard({ course }: { course: Course }) {
             <b>{course.teacher}</b>
           </span>
         </div>
-        {course.status === 'open' ? (
-          <Link className="btn k sm" href={`/register?course=${encodeURIComponent(course.name)}`} aria-label={`سجّل في ${course.name}`}>
+        {openId !== undefined ? (
+          <Link className="btn k sm" href={`/register?course=${openId}`} aria-label={`سجّل في ${course.name}`}>
             سجّل
           </Link>
         ) : (
