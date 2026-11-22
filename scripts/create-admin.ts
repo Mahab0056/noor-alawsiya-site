@@ -1,28 +1,22 @@
 /**
- * Creates an admin account with two-step verification.
+ * Creates an admin account. Login is by a six-digit code emailed to this address,
+ * so there is no password to choose and nothing to copy into an authenticator app.
  *
- *   ADMIN_PASSWORD='…' npm run create-admin -- "الاسم" email@example.com [owner|staff]
- *
- * The password comes from the environment so it does not land in shell history.
- * The TOTP secret is shown once: add it to an authenticator app straight away.
+ * npm run create-admin -- "الاسم" email@example.com [owner|staff]
  */
 import { createAdmin } from '../lib/accounts';
-import { totpUri } from '../lib/auth';
 import { getDb } from '../lib/db';
 
 async function main() {
   const [name, email, role = 'staff'] = process.argv.slice(2);
-  const password = process.env.ADMIN_PASSWORD ?? '';
-  if (!name || !email || (role !== 'owner' && role !== 'staff') || !password) {
-    console.error('Usage: ADMIN_PASSWORD=… npm run create-admin -- "Name" email@example.com [owner|staff]');
+  if (!name || !email || (role !== 'owner' && role !== 'staff')) {
+    console.error('Usage: npm run create-admin -- "Name" email@example.com [owner|staff]');
     process.exit(2);
   }
   const db = await getDb();
-  const { totpSecret } = await createAdmin(db, { name, email, password, role });
+  await createAdmin(db, { name, email, role });
   console.log(`Admin created: ${email} (${role})`);
-  console.log('Add this to an authenticator app now. It is not shown again:');
-  console.log(`  secret: ${totpSecret}`);
-  console.log(`  link:   ${totpUri(totpSecret, email)}`);
+  console.log('Sign in at /admin/login with this address; the login code arrives by email.');
   await db.close();
 }
 

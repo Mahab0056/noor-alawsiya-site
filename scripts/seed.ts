@@ -93,8 +93,7 @@ async function seedDemo() {
   }
 
   const email = 'admin@noor.test';
-  const adminPassword = randomBytes(15).toString('base64url');
-  const { adminId, totpSecret } = await createAdmin(db, { name: 'مدير تجريبي', email, password: adminPassword, role: 'owner' });
+  const { adminId } = await createAdmin(db, { name: 'مدير تجريبي', email, role: 'owner' });
   await reviewRequest(db, adminId, ids[3], 'accepted', 'أهلاً بك. الحلقة يوم الجمعة بعد صلاة العصر.');
   await reviewRequest(db, adminId, ids[5], 'rejected', 'اكتمل عدد هذه الحلقة. سنتواصل معك عند فتح حلقة جديدة.');
 
@@ -102,7 +101,7 @@ async function seedDemo() {
   const dir = path.resolve(process.env.PGLITE_DIR ?? '.pglite');
   mkdirSync(dir, { recursive: true });
   const file = path.join(dir, 'demo-credentials.json');
-  writeFileSync(file, JSON.stringify({ admin: { email, password: adminPassword, totpSecret }, students: { phones: '07700000001 … 07700000006', password } }, null, 2));
+  writeFileSync(file, JSON.stringify({ admin: { email, login: 'رمز بالبريد — اقرأه من جدول admin_login_codes في التطوير' }, students: { phones: '07700000001 … 07700000006', password } }, null, 2));
   console.log(`demo: 6 invented students and a demo admin added. Credentials are in ${file}`);
 }
 
