@@ -31,7 +31,7 @@ async function course(name = 'دورة تجريبية') {
 
 test('migrations apply cleanly and are recorded', async () => {
   const rows = await db.query<{ name: string }>('select name from schema_migrations order by name');
-  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql']);
+  assert.deepEqual(rows.map((r) => r.name), ['0001_init.sql', '0002_auth.sql', '0003_hardening.sql', '0004_admin_email_code.sql']);
 });
 
 test('a minor cannot be stored without guardian name, phone and consent', async () => {

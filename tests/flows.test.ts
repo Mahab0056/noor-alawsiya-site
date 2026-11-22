@@ -1,9 +1,9 @@
 // Registration, login and admin review on an in-memory PGlite database. Invented data only.
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
-import { createAdmin, loginAdmin, loginStudent } from '@/lib/accounts';
+import { createAdmin, loginStudent, requestAdminCode, verifyAdminCode } from '@/lib/accounts';
 import { addQuestion, countRequests, getRequest, listRequests, moveQuestion, reviewRequest, setQuestionActive, validateQuestion } from '@/lib/admin';
-import { allowRegistration, createSession, destroySession, normalizePhone, readSession, seal, totpAt, unseal, verifyTotp } from '@/lib/auth';
+import { allowRegistration, createSession, destroySession, hashLoginCode, normalizePhone, readSession } from '@/lib/auth';
 import { isMinorIn, visibleQuestions } from '@/lib/form-rules';
 import { resetDbForTests, type Db } from '@/lib/db';
 import { listQuestions, listStudentRegistrations, NO, register, validateStudent, YES, type RegistrationInput } from '@/lib/registration';
@@ -11,7 +11,6 @@ import { listQuestions, listStudentRegistrations, NO, register, validateStudent,
 let db: Db;
 let courseId: number;
 let adminId: number;
-let totpSecret: string;
 let q: { level: number; before: number; which: number; days: number };
 
 const YEAR = new Date().getFullYear();
@@ -22,9 +21,7 @@ before(async () => {
   const [c] = await db.query<{ id: string }>(`insert into courses (name, kind, teacher, published) values ('دورة تجريبية', 'tajweed', 'أستاذ تجريبي', true) returning id`);
   courseId = Number(c.id);
   await db.query(`insert into courses (name, kind, teacher, published, status) values ('دورة منتهية', 'tajweed', 'أستاذ تجريبي', true, 'done')`);
-  const created = await createAdmin(db, { name: 'مدير تجريبي', email: 'Admin@Example.test', password: 'a-long-test-password', role: 'owner' });
-  adminId = created.adminId;
-  totpSecret = created.totpSecret;
+  adminId = (await createAdmin(db, { name: 'مدير تجريبي', email: 'Admin@Example.test', role: 'owner' })).adminId;
   q = {
     level: await addQuestion(db, adminId, { label: 'ما مستواك الحالي في التلاوة؟', kind: 'single', options: ['مبتدئ', 'أقرأ بطلاقة', 'أتقن التجويد'], required: true, showIf: null }),
     before: await addQuestion(db, adminId, { label: 'هل درست في دورة من قبل؟', kind: 'yes_no', options: [], required: true, showIf: null }),
@@ -139,26 +136,6 @@ test('sessions: only the hash is stored, and logout ends the session', async () 
   assert.equal(await readSession(db, token), null);
 });
 
-test('TOTP matches the RFC 6238 test vector and tolerates one step of drift', () => {
-  const rfcSecret = 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ'; // "12345678901234567890"
-  assert.equal(totpAt(rfcSecret, 59_000), '287082');
-  const now = Date.now();
-  assert.ok(verifyTotp(totpSecret, totpAt(totpSecret, now - 30_000), now));
-  assert.ok(!verifyTotp(totpSecret, totpAt(totpSecret, now - 120_000), now));
-  assert.equal(unseal(seal(totpSecret)), totpSecret);
-});
-
-test('admin login needs email, password and a current code', async () => {
-  const code = () => totpAt(totpSecret, Date.now());
-  assert.ok((await loginAdmin(db, 'admin@example.test', 'a-long-test-password', code(), IP)).ok, 'email is case-insensitive');
-  assert.deepEqual(await loginAdmin(db, 'admin@example.test', 'a-long-test-password', '000000', IP), { ok: false, reason: 'invalid' });
-  assert.deepEqual(await loginAdmin(db, 'admin@example.test', 'wrong-password-here', code(), IP), { ok: false, reason: 'invalid' });
-  assert.deepEqual(await loginAdmin(db, 'nobody@example.test', 'a-long-test-password', code(), IP), { ok: false, reason: 'invalid' });
-  const [stored] = await db.query<{ totp_secret: string }>('select totp_secret from admins');
-  assert.notEqual(stored.totp_secret, totpSecret, 'the TOTP secret is encrypted at rest');
-  await db.query('delete from login_attempts');
-});
-
 test('the admin sees the request with its answers, accepts it, and can reverse it', async () => {
   const pending = await listRequests(db, 'pending');
   const mine = pending.find((r) => r.studentName === 'طالب الشرط');
@@ -207,14 +184,70 @@ test('a successful login does not reset the failure counter for that phone', asy
   await db.query('delete from login_attempts');
 });
 
-test('a TOTP code works once, and odd input is refused without an error', async () => {
-  await db.query('update admins set totp_last_step = null');
-  const code = totpAt(totpSecret, Date.now());
-  assert.ok((await loginAdmin(db, 'admin@example.test', 'a-long-test-password', code, IP)).ok);
-  assert.deepEqual(await loginAdmin(db, 'admin@example.test', 'a-long-test-password', code, IP), { ok: false, reason: 'invalid' });
-  for (const odd of ['١٢٣٤٥٦', 'abcdef', '', '12345', '1234567']) assert.equal(verifyTotp(totpSecret, odd), false);
-  const arabic = totpAt(totpSecret, Date.now()).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
-  assert.ok(verifyTotp(totpSecret, arabic), 'Arabic-Indic digits are accepted');
+// The mailer is stubbed everywhere below: a test must never reach the network.
+const outbox: { to: string; code: string }[] = [];
+const stubMailer = async ({ to, text }: { to: string; text: string }) => {
+  outbox.push({ to, code: text.match(/\d{6}/)![0] });
+};
+const codeFor = async (email: string) => {
+  outbox.length = 0;
+  assert.deepEqual(await requestAdminCode(db, email, IP, stubMailer), { ok: true });
+  return outbox.at(-1)?.code;
+};
+
+test('an emailed login code signs the admin in, and works only once', async () => {
+  await db.query('delete from login_attempts');
+  const code = await codeFor('admin@example.test');
+  assert.match(code!, /^\d{6}$/);
+  assert.equal(outbox[0].to, 'admin@example.test');
+  assert.ok((await verifyAdminCode(db, 'Admin@Example.test', code!, IP)).ok, 'the address is matched case-insensitively');
+  assert.deepEqual(await verifyAdminCode(db, 'admin@example.test', code!, IP), { ok: false, reason: 'invalid' });
+  await db.query('delete from login_attempts');
+});
+
+test('a login code is refused once it has expired, and Arabic-Indic digits are accepted', async () => {
+  await db.query('delete from login_attempts');
+  const code = await codeFor('admin@example.test');
+  const arabic = code!.replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[Number(d)]);
+  assert.ok((await verifyAdminCode(db, 'admin@example.test', arabic, IP)).ok);
+
+  const expired = await codeFor('admin@example.test');
+  await db.query(`update admin_login_codes set expires_at = now() - interval '1 minute' where consumed_at is null`);
+  assert.deepEqual(await verifyAdminCode(db, 'admin@example.test', expired!, IP), { ok: false, reason: 'invalid' });
+  for (const odd of ['abcdef', '', '12345', '1234567']) assert.deepEqual(await verifyAdminCode(db, 'admin@example.test', odd, IP), { ok: false, reason: 'invalid' });
+  await db.query('delete from login_attempts');
+});
+
+test('asking for a code reveals nothing about an unknown address, and the code is not stored in the clear', async () => {
+  outbox.length = 0;
+  assert.deepEqual(await requestAdminCode(db, 'nobody@example.test', IP, stubMailer), { ok: true }, 'the answer is the same as for a real admin');
+  assert.equal(outbox.length, 0, 'but nothing is sent');
+
+  const code = await codeFor('admin@example.test');
+  const [row] = await db.query<{ code_hash: string }>('select code_hash from admin_login_codes where consumed_at is null order by created_at desc limit 1');
+  assert.notEqual(row.code_hash, code);
+  assert.equal(row.code_hash, hashLoginCode(code!));
+  await db.query('delete from admin_login_codes');
+  await db.query('delete from login_attempts');
+});
+
+test('a failed send leaves no usable code behind', async () => {
+  await db.query('delete from login_attempts');
+  const failing = async () => {
+    throw new Error('Resend refused the message (403)');
+  };
+  assert.deepEqual(await requestAdminCode(db, 'admin@example.test', IP, failing), { ok: false, reason: 'send-failed' });
+  const rows = await db.query('select id from admin_login_codes where consumed_at is null');
+  assert.equal(rows.length, 0);
+  await db.query('delete from login_attempts');
+});
+
+test('guessing the admin code is throttled', async () => {
+  await db.query('delete from login_attempts');
+  const code = await codeFor('admin@example.test');
+  for (let i = 0; i < 5; i++) assert.deepEqual(await verifyAdminCode(db, 'admin@example.test', `00000${i}`, '10.0.0.11'), { ok: false, reason: 'invalid' });
+  assert.deepEqual(await verifyAdminCode(db, 'admin@example.test', code!, '10.0.0.11'), { ok: false, reason: 'throttled' }, 'the right code no longer helps once the limit is hit');
+  assert.deepEqual(await requestAdminCode(db, 'admin@example.test', '10.0.0.11', stubMailer), { ok: false, reason: 'throttled' });
   await db.query('delete from login_attempts');
 });
 
