@@ -1,0 +1,136 @@
+/* شهادة الإتمام: مدرسة نور الأوصياء. تصميم فقط (docs/design/certificate/SPEC.md).
+   نسختان من البيانات نفسها:
+     .cert.a4  = ورقة A4 بالعرض للطباعة (297 × 210 mm). الورق أبيض والحبر أسود؛ الأصفر زينة فقط ولا يحمل معلومة.
+     .cert.sq  = صورة مربعة للمشاركة (1080 × 1080 px). القماشة سوداء كما في الموقع.
+   الألوان من app/globals.css (النسخة 2 المعتمدة). */
+
+@font-face { font-family: "Cert UI"; font-weight: 400; src: url("fonts/IBMPlexSansArabic-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Cert UI"; font-weight: 600; src: url("fonts/IBMPlexSansArabic-SemiBold.ttf") format("truetype"); }
+@font-face { font-family: "Cert UI"; font-weight: 700; src: url("fonts/IBMPlexSansArabic-Bold.ttf") format("truetype"); }
+@font-face { font-family: "Cert Name"; font-weight: 700; src: url("fonts/Amiri-Bold.ttf") format("truetype"); }
+@font-face { font-family: "Cert Brand"; font-weight: 700; src: url("fonts/ArefRuqaa-Bold.ttf") format("truetype"); }
+
+.cert {
+  --y: #fffa00;
+  --k: #0b0b0c;
+  --ink: #17171a;
+  --soft: #4a4842; /* أغمق من --mute في الموقع: نص صغير على ورق */
+  --ui: "Cert UI", "Segoe UI", sans-serif;
+  --name: "Cert Name", serif;
+  --brand: "Cert Brand", serif;
+  position: relative;
+  overflow: hidden;
+  direction: rtl;
+  text-align: center;
+  font-family: var(--ui);
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+.cert *, .cert *::before, .cert *::after { box-sizing: border-box; }
+.cert p, .cert h1, .cert h2 { margin: 0; }
+.cert .ltr { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+.cert .name { font-family: var(--name); font-weight: 700; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.cert .name span { display: block; white-space: nowrap; }
+.cert.nf-ruqaa .name { font-family: var(--brand); }
+/* الحقول التي قد تطول (اسم الدورة، سطر النوع والتاريخ، اسم المدرّس): درجات s2 ثم s3، أصغر وبأسطر أكثر (SPEC.md §5).
+   عدد الأسطر المسموح لكل درجة يطبّقه من يرسم (النموذج: mock/certificate.html)، لا CSS: لا قصّ هنا أبداً. */
+.cert .course, .cert .meta, .cert .sig b { text-wrap: balance; overflow-wrap: anywhere; }
+.cert .course:not(.s2):not(.s3) { white-space: nowrap; }
+.cert .qr svg { display: block; width: 100%; height: 100%; }
+
+/* ================= A4 بالعرض ================= */
+.cert.a4 { width: 297mm; height: 210mm; background: #fff; color: var(--k); }
+/* الإطار: خطّان أسودان بينهما شريط أصفر. بالرمادي يبقى خطّان أسودان. لا شيء يصل حافة الورقة (هامش 9 mm). */
+.a4 .frame { position: absolute; inset: 9mm; border: 0.7mm solid var(--k); }
+.a4 .frame::before { content: ""; position: absolute; inset: 0; border: 1.9mm solid var(--y); }
+.a4 .frame::after { content: ""; position: absolute; inset: 1.9mm; border: 0.25mm solid var(--k); }
+.a4 .star { position: absolute; width: 11mm; height: 11mm; }
+.a4 .star.tr { top: 4.8mm; right: 4.8mm; }
+.a4 .star.tl { top: 4.8mm; left: 4.8mm; }
+.a4 .star.br { bottom: 4.8mm; right: 4.8mm; }
+.a4 .star.bl { bottom: 4.8mm; left: 4.8mm; }
+.star svg { display: block; width: 100%; height: 100%; }
+
+.a4 .body { position: absolute; inset: 15.5mm 26mm 14.5mm; display: flex; flex-direction: column; align-items: center; }
+/* القوس (محراب): شكل «.arch» في واجهة الموقع. أصفر بحدّ أسود وفيه شعار المدرسة بالأسود. */
+.a4 .crest { width: 27mm; height: 32mm; border: 0.5mm solid var(--k); border-radius: 13.5mm 13.5mm 1.5mm 1.5mm; background: var(--y); display: grid; place-items: center; padding-top: 1.5mm; flex: none; }
+.a4 .crest img { height: 24mm; width: auto; display: block; }
+.a4 .school { font-size: 10.5pt; font-weight: 600; line-height: 1.5; margin-top: 2mm; }
+.a4 .title { font: 700 38pt/1.25 var(--brand); margin-top: 0.5mm; }
+.a4 .bar { width: 30mm; height: 1.7mm; background: var(--y); border: 0.3mm solid var(--k); border-radius: 1mm; margin-top: 1.2mm; flex: none; }
+.a4 .lead { font-size: 12.5pt; line-height: 1.5; color: var(--soft); margin-top: 4mm; }
+/* صندوق الاسم ثابت الارتفاع: سطر واحد أو سطران، والتخطيط تحته لا يتحرك. */
+.a4 .name { width: 220mm; height: 29mm; line-height: 1.22; flex: none; }
+.a4 .rule { display: flex; align-items: center; gap: 3mm; width: 120mm; flex: none; margin-top: 2.5mm; }
+.a4 .rule::before, .a4 .rule::after { content: ""; flex: 1; height: 0.25mm; background: var(--k); }
+.a4 .rule i { width: 2.6mm; height: 2.6mm; border: 0.3mm solid var(--k); background: var(--y); transform: rotate(45deg); }
+.a4 .for { font-size: 12.5pt; line-height: 1.5; color: var(--soft); margin-top: 3mm; }
+.a4 .course { font-size: 19pt; font-weight: 700; line-height: 1.4; width: 225mm; }
+.a4 .course.s2 { font-size: 16pt; }
+.a4 .course.s3 { font-size: 13pt; }
+.a4 .meta { font-size: 12.5pt; line-height: 1.6; color: var(--ink); margin-top: 1mm; width: 225mm; }
+.a4 .meta.s2 { font-size: 11pt; }
+.a4 .meta b { font-weight: 600; }
+
+.a4 .foot { margin-top: auto; width: 100%; display: grid; grid-template-columns: 1fr 1fr 62mm; gap: 8mm; align-items: start; }
+.a4 .sig { text-align: center; min-width: 0; }
+.a4 .sig .line { height: 13mm; border-bottom: 0.3mm solid var(--k); margin: 0 6mm; }
+.a4 .sig b { display: block; font-size: 11pt; font-weight: 600; line-height: 1.45; margin-top: 1.4mm; }
+.a4 .sig b.s2 { font-size: 9pt; }
+.a4 .sig small { display: block; font-size: 9pt; line-height: 1.5; color: var(--soft); }
+.a4 .verify { display: grid; grid-template-columns: 1fr 25mm; gap: 3mm; align-items: center; text-align: start; margin-top: 1mm; }
+.a4 .verify .qr { width: 25mm; height: 25mm; grid-column: 2; grid-row: 1; }
+.a4 .verify .v { grid-column: 1; grid-row: 1; min-width: 0; }
+.a4 .verify small { display: block; font-size: 8pt; line-height: 1.45; color: var(--soft); }
+.a4 .verify .code { display: block; font-size: 13.5pt; font-weight: 700; line-height: 1.35; letter-spacing: 0.04em; text-align: right; }
+.a4 .verify .url { display: block; font-size: 8pt; line-height: 1.5; text-align: right; white-space: nowrap; }
+.a4 .issued { font-size: 9.5pt; line-height: 1.5; color: var(--soft); margin-top: 2.5mm; }
+
+/* ================= المربع 1080 ================= */
+.cert.sq { width: 1080px; height: 1080px; color: #fff; background: var(--k) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23fffa00' stroke-opacity='.09'%3E%3Crect x='27' y='27' width='42' height='42'/%3E%3Crect x='27' y='27' width='42' height='42' transform='rotate(45 48 48)'/%3E%3Ccircle cx='48' cy='48' r='10'/%3E%3Cpath d='M0 48h18M78 48h18M48 0v18M48 78v18'/%3E%3C/g%3E%3C/svg%3E"); }
+.sq .frame { position: absolute; inset: 30px 30px 162px; border: 2px solid var(--y); border-radius: 4px; }
+.sq .star { position: absolute; width: 44px; height: 44px; }
+.sq .star.tr { top: 9px; right: 9px; }
+.sq .star.tl { top: 9px; left: 9px; }
+.sq .star.br, .sq .star.bl { display: none; }
+/* الجسم غير موضوع (static) حتى يكون شريط التحقق منسوباً إلى الصورة كلها لا إلى الجسم */
+.sq .body { height: 100%; padding: 50px 70px 184px; display: flex; flex-direction: column; align-items: center; }
+.sq .crest { width: 138px; height: 162px; border-radius: 69px 69px 8px 8px; background: var(--y); display: grid; place-items: center; padding-top: 8px; flex: none; }
+.sq .crest img { height: 120px; width: auto; display: block; }
+.sq .school { display: none; }
+.sq .title { font: 700 92px/1.25 var(--brand); color: var(--y); margin-top: 18px; }
+.sq .bar { display: none; }
+.sq .lead { font-size: 30px; line-height: 1.5; color: #d5d5d5; margin-top: 14px; }
+.sq .name { width: 940px; height: 200px; line-height: 1.22; flex: none; }
+.sq .rule { display: flex; align-items: center; gap: 16px; width: 420px; flex: none; margin-top: 18px; }
+.sq .rule::before, .sq .rule::after { content: ""; flex: 1; height: 2px; background: var(--y); }
+.sq .rule i { width: 14px; height: 14px; background: var(--y); transform: rotate(45deg); }
+.sq .for { font-size: 28px; line-height: 1.5; color: #d5d5d5; margin-top: 16px; }
+.sq .course { font-size: 44px; font-weight: 700; line-height: 1.4; width: 940px; }
+.sq .course.s2 { font-size: 36px; }
+.sq .course.s3 { font-size: 30px; }
+.sq .meta { font-size: 28px; line-height: 1.6; color: #e9e9e9; margin-top: 8px; width: 940px; }
+.sq .meta.s2 { font-size: 24px; }
+.sq .meta b { font-weight: 600; }
+.sq .foot { position: absolute; inset: auto 0 0; height: 132px; background: var(--y); color: var(--k); display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 0 44px; }
+.sq .sig, .sq .issued, .sq .verify .qr, .sq .verify small.how { display: none; }
+.sq .foot .org { font-size: 27px; font-weight: 700; line-height: 1.4; text-align: start; white-space: nowrap; }
+.sq .foot .org small { display: block; font-size: 21px; font-weight: 400; }
+.sq .verify { text-align: left; }
+.sq .verify small { display: block; font-size: 20px; line-height: 1.4; text-align: left; }
+.sq .verify .code { display: none; }
+.sq .verify .url { display: block; font-size: 28px; font-weight: 700; line-height: 1.4; white-space: nowrap; }
+.a4 .foot .org { display: none; }
+
+/* ================= وسم النموذج ================= */
+/* كل صور هذا المجلد تحمله. الشهادة الحقيقية لا تحمله أبداً. */
+.cert .specimen { position: absolute; z-index: 5; top: 0; left: 0; background: var(--k); color: #fff; font: 600 8.5pt/1 var(--ui); padding: 1.6mm 4mm; border-bottom-right-radius: 2mm; white-space: nowrap; }
+.sq .specimen { font-size: 20px; padding: 9px 18px; border-bottom-right-radius: 10px; background: #fff; color: var(--k); }
+
+/* ================= الطباعة ================= */
+@page { size: A4 landscape; margin: 0; }
+@media print {
+  html, body { margin: 0; padding: 0; background: #fff; }
+}

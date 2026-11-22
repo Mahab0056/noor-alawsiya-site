@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>نموذج صفحة التحقق من الشهادة · نور الأوصياء</title>
+<!-- أنماط الموقع نفسها من الفرع، ثم الجديد فقط في verify.css. الخطوط: ملفات محلية بدل next/font. -->
+<style>
+  @font-face { font-family: "Cert UI"; font-weight: 400; src: url("../fonts/IBMPlexSansArabic-Regular.ttf") format("truetype"); }
+  @font-face { font-family: "Cert UI"; font-weight: 600; src: url("../fonts/IBMPlexSansArabic-SemiBold.ttf") format("truetype"); }
+  @font-face { font-family: "Cert UI"; font-weight: 700; src: url("../fonts/IBMPlexSansArabic-Bold.ttf") format("truetype"); }
+  @font-face { font-family: "Cert Brand"; font-weight: 700; src: url("../fonts/ArefRuqaa-Bold.ttf") format("truetype"); }
+  :root { --font-ui: "Cert UI"; --font-brand: "Cert Brand"; --font-quran: serif; }
+</style>
+<link rel="stylesheet" href="../../../../app/globals.css">
+<link rel="stylesheet" href="../../../../app/site.css">
+<link rel="stylesheet" href="../../../../app/portal.css">
+<link rel="stylesheet" href="../../../../app/forms.css">
+<link rel="stylesheet" href="verify.css">
+<style>
+  .specimen-bar { position: fixed; top: 0; left: 0; z-index: 9; background: #fff; color: #0b0b0c; font: 600 12px/1 var(--ui); padding: 7px 12px; border-bottom-right-radius: 8px; }
+</style>
+</head>
+<body>
+<!-- ?state=valid|revoked|unknown|form|busy   (أسماء مخترعة؛ الرمز من نطاق النماذج 00) -->
+<div class="specimen-bar">نموذج تصميم · أسماء غير حقيقية</div>
+<main class="auth" id="main">
+  <div class="card box verify" id="box"></div>
+</main>
+<script>
+(function () {
+  var state = new URLSearchParams(location.search).get('state') || 'valid';
+  var logo = '<a class="logo" href="#"><img src="../../../../public/img/mark-black.png" alt="" width="37" height="48"><span>نور الأوصياء<small>للدراسات القرآنية</small></span></a>';
+  var form = function (label) {
+    return '<form action="#" method="get">' +
+      '<div class="field"><label for="code">' + label + '</label>' +
+      '<input class="inp code" id="code" name="code" inputmode="text" lang="en" dir="ltr" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="XXXX-XXXX" aria-describedby="code-hint">' +
+      '<span class="hint" id="code-hint">ثمانية أحرف وأرقام إنجليزية، مطبوعة أسفل الشهادة بجانب رمز QR.</span></div>' +
+      '<button class="btn k" type="submit">تحقّق</button></form>';
+  };
+  var views = {
+    valid:
+      '<h1>التحقق من شهادة</h1><p class="sub">مدرسة نور الأوصياء للدراسات القرآنية · بغداد</p>' +
+      '<div class="alert ok" role="status"><b>شهادة صحيحة.</b> صدرت عن المدرسة وهي سارية.</div>' +
+      '<dl class="facts">' +
+        '<div><dt>الاسم</dt><dd class="big">فاطمة الزهراء عبد الحسين محمد جواد كاظم عبد الأمير الخفاجي</dd></div>' +
+        '<div><dt>الدورة</dt><dd>دورة الضحى التمهيدية</dd></div>' +
+        '<div><dt>نوع الدورة</dt><dd>أحكام التلاوة والتجويد</dd></div>' +
+        '<div><dt>المدة</dt><dd>من ٣ أيار ٢٠٢٦ إلى ١٢ أيلول ٢٠٢٦</dd></div>' +
+        '<div><dt>تاريخ الإصدار</dt><dd>١٥ أيلول ٢٠٢٦</dd></div>' +
+        '<div><dt>رقم الشهادة</dt><dd><span class="num">00EX-AMP1</span></dd></div>' +
+      '</dl>' +
+      '<p class="note">قارن الاسم والدورة بما هو مكتوب في الشهادة التي أمامك. هذه شهادة إتمام دورة وليست إجازة قرآنية.</p>' +
+      '<a class="btn w" href="#">تحقق من شهادة أخرى</a>',
+    revoked:
+      '<h1>التحقق من شهادة</h1><p class="sub">مدرسة نور الأوصياء للدراسات القرآنية · بغداد</p>' +
+      '<div class="alert bad" role="status"><b>شهادة ملغاة.</b> ألغتها المدرسة في ٢ تشرين الأول ٢٠٢٦ ولم تعد سارية.</div>' +
+      '<dl class="facts">' +
+        '<div><dt>رقم الشهادة</dt><dd><span class="num">00EX-AMP1</span></dd></div>' +
+      '</dl>' +
+      '<p class="note">لا تُعرض بيانات صاحب الشهادة بعد إلغائها. للاستفسار تواصل مع المدرسة.</p>' +
+      '<a class="btn w" href="#">تحقق من شهادة أخرى</a>',
+    unknown:
+      '<h1>التحقق من شهادة</h1><p class="sub">مدرسة نور الأوصياء للدراسات القرآنية · بغداد</p>' +
+      '<div class="alert bad" role="alert"><b>لا توجد شهادة بهذا الرقم.</b> تأكد من الرقم كما هو مطبوع في الشهادة ثم حاول مرة أخرى.</div>' +
+      form('رقم الشهادة'),
+    form:
+      '<h1>التحقق من شهادة</h1><p class="sub">اكتب رقم الشهادة للتأكد من أنها صادرة عن مدرسة نور الأوصياء.</p>' +
+      form('رقم الشهادة'),
+    busy:
+      '<h1>التحقق من شهادة</h1><p class="sub">مدرسة نور الأوصياء للدراسات القرآنية · بغداد</p>' +
+      '<div class="alert info" role="alert"><b>محاولات كثيرة.</b> انتظر دقيقة ثم حاول مرة أخرى.</div>' +
+      form('رقم الشهادة'),
+  };
+  document.getElementById('box').innerHTML = logo + (views[state] || views.valid);
+  document.fonts.ready.then(function () { document.documentElement.dataset.ready = '1'; });
+})();
+</script>
+</body>
+</html>

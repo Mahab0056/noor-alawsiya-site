@@ -1,0 +1,992 @@
+{
+ "generated": "2026-11-22",
+ "fit": [
+  {
+   "format": "a4",
+   "sample": "base",
+   "step": "one",
+   "size": 44,
+   "lines": 1,
+   "widthUsed": "43%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "long40",
+   "step": "one",
+   "size": 32,
+   "lines": 1,
+   "widthUsed": "89%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "long58",
+   "step": "one",
+   "size": 28,
+   "lines": 1,
+   "widthUsed": "91%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "max80",
+   "step": "two",
+   "size": 30,
+   "lines": 2,
+   "widthUsed": "72%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "wide",
+   "step": "one",
+   "size": 40,
+   "lines": 1,
+   "widthUsed": "90%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "sparse",
+   "step": "one",
+   "size": 44,
+   "lines": 1,
+   "widthUsed": "43%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "fullest",
+   "step": "one",
+   "size": 28,
+   "lines": 1,
+   "widthUsed": "91%",
+   "course": "s2",
+   "meta": "s1",
+   "teacher": "s2",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "stress80",
+   "step": "two",
+   "size": 21,
+   "lines": 2,
+   "widthUsed": "96%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "a4",
+   "sample": "onetoken",
+   "step": "one",
+   "size": 40,
+   "lines": 1,
+   "widthUsed": "90%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "base",
+   "step": "one",
+   "size": 92,
+   "lines": 1,
+   "widthUsed": "60%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "long40",
+   "step": "two",
+   "size": 72,
+   "lines": 2,
+   "widthUsed": "75%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "long58",
+   "step": "two",
+   "size": 72,
+   "lines": 2,
+   "widthUsed": "78%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "max80",
+   "step": "two",
+   "size": 56,
+   "lines": 2,
+   "widthUsed": "89%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "wide",
+   "step": "one",
+   "size": 60,
+   "lines": 1,
+   "widthUsed": "90%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "sparse",
+   "step": "one",
+   "size": 92,
+   "lines": 1,
+   "widthUsed": "59%",
+   "course": "s2",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "fullest",
+   "step": "two",
+   "size": 72,
+   "lines": 2,
+   "widthUsed": "78%",
+   "course": "s2",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "stress80",
+   "step": "shrink",
+   "size": 32.1,
+   "lines": 2,
+   "widthUsed": "98%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  },
+  {
+   "format": "sq",
+   "sample": "onetoken",
+   "step": "one",
+   "size": 60,
+   "lines": 1,
+   "widthUsed": "90%",
+   "course": "s1",
+   "meta": "s1",
+   "teacher": "s1",
+   "problems": []
+  }
+ ],
+ "contrast": {
+  "a4": [
+   {
+    "pair": "#ffffff on #0b0b0c",
+    "min": 4.5,
+    "colour": 19.67,
+    "grey": 19.68,
+    "greyPair": "#ffffff on #0b0b0b",
+    "smallestPx": 11.3333,
+    "used": [
+     ".cert .specimen"
+    ]
+   },
+   {
+    "pair": "#0b0b0c on #ffffff",
+    "min": 4.5,
+    "colour": 19.67,
+    "grey": 19.68,
+    "greyPair": "#0b0b0b on #ffffff",
+    "smallestPx": 10.6667,
+    "used": [
+     ".body .school",
+     ".sig b",
+     ".v .code",
+     ".v .url"
+    ]
+   },
+   {
+    "pair": "#0b0b0c on #ffffff (large)",
+    "min": 3,
+    "colour": 19.67,
+    "grey": 19.68,
+    "greyPair": "#0b0b0b on #ffffff",
+    "smallestPx": 25.3333,
+    "used": [
+     ".body .title",
+     ".body #name",
+     ".body #course"
+    ]
+   },
+   {
+    "pair": "#4a4842 on #ffffff",
+    "min": 4.5,
+    "colour": 9.14,
+    "grey": 9.15,
+    "greyPair": "#484848 on #ffffff",
+    "smallestPx": 10.6667,
+    "used": [
+     ".body .lead",
+     ".body .for",
+     ".sig small",
+     ".v small",
+     ".v .how",
+     ".body .issued"
+    ]
+   },
+   {
+    "pair": "#17171a on #ffffff",
+    "min": 4.5,
+    "colour": 17.89,
+    "grey": 17.93,
+    "greyPair": "#171717 on #ffffff",
+    "smallestPx": 16.6667,
+    "used": [
+     ".body .meta"
+    ]
+   }
+  ],
+  "sq": [
+   {
+    "pair": "#0b0b0c on #ffffff",
+    "min": 4.5,
+    "colour": 19.67,
+    "grey": 19.68,
+    "greyPair": "#0b0b0b on #ffffff",
+    "smallestPx": 20,
+    "used": [
+     ".cert .specimen"
+    ]
+   },
+   {
+    "pair": "#fffa00 on #0b0b0c (large)",
+    "min": 3,
+    "colour": 17.73,
+    "grey": 14.77,
+    "greyPair": "#dfdfdf on #0b0b0b",
+    "smallestPx": 92,
+    "used": [
+     ".body .title"
+    ]
+   },
+   {
+    "pair": "#d5d5d5 on #0b0b0c (large)",
+    "min": 3,
+    "colour": 13.4,
+    "grey": 13.41,
+    "greyPair": "#d5d5d5 on #0b0b0b",
+    "smallestPx": 28,
+    "used": [
+     ".body .lead",
+     ".body .for"
+    ]
+   },
+   {
+    "pair": "#ffffff on #0b0b0c (large)",
+    "min": 3,
+    "colour": 19.67,
+    "grey": 19.68,
+    "greyPair": "#ffffff on #0b0b0b",
+    "smallestPx": 44,
+    "used": [
+     ".body #name",
+     ".body #course"
+    ]
+   },
+   {
+    "pair": "#e9e9e9 on #0b0b0c (large)",
+    "min": 3,
+    "colour": 16.2,
+    "grey": 16.21,
+    "greyPair": "#e9e9e9 on #0b0b0b",
+    "smallestPx": 28,
+    "used": [
+     ".body .meta"
+    ]
+   },
+   {
+    "pair": "#0b0b0c on #fffa00 (large)",
+    "min": 3,
+    "colour": 17.73,
+    "grey": 14.77,
+    "greyPair": "#0b0b0b on #dfdfdf",
+    "smallestPx": 27,
+    "used": [
+     ".foot .org",
+     ".v .url"
+    ]
+   },
+   {
+    "pair": "#0b0b0c on #fffa00",
+    "min": 4.5,
+    "colour": 17.73,
+    "grey": 14.77,
+    "greyPair": "#0b0b0b on #dfdfdf",
+    "smallestPx": 20,
+    "used": [
+     ".org small",
+     ".v small"
+    ]
+   }
+  ]
+ },
+ "bidi": [
+  {
+   "format": "a4",
+   "sample": "base",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "long40",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "long58",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "max80",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "wide",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "sparse",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    },
+    {
+     "what": "brackets of the honorific keep their order",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "fullest",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    },
+    {
+     "what": "brackets of the honorific keep their order",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "stress80",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "a4",
+   "sample": "onetoken",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .code reads left to right",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "base",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "long40",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "long58",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "max80",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "wide",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "sparse",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    },
+    {
+     "what": "brackets of the honorific keep their order",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "fullest",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    },
+    {
+     "what": "brackets of the honorific keep their order",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "stress80",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  },
+  {
+   "format": "sq",
+   "sample": "onetoken",
+   "results": [
+    {
+     "what": "name reads right to left",
+     "ok": true
+    },
+    {
+     "what": "digits of the year run left to right",
+     "ok": true
+    },
+    {
+     "what": "year sits to the left of the month name",
+     "ok": true
+    },
+    {
+     "what": ".verify .url reads left to right",
+     "ok": true
+    }
+   ]
+  }
+ ],
+ "yellow": [
+  {
+   "shape": ".crest",
+   "ok": true
+  },
+  {
+   "shape": ".bar",
+   "ok": true
+  },
+  {
+   "shape": ".rule i",
+   "ok": true
+  },
+  {
+   "shape": "frame band",
+   "ok": true
+  },
+  {
+   "shape": "corner stars",
+   "ok": true
+  }
+ ],
+ "qr": [
+  {
+   "image": "a4-base.png",
+   "decoded": "https://noor-alawsiya.com/c/00EXAMP1",
+   "ok": true
+  },
+  {
+   "image": "grey-a4-base.png",
+   "decoded": "https://noor-alawsiya.com/c/00EXAMP1",
+   "ok": true
+  },
+  {
+   "image": "a4-fullest.png",
+   "decoded": "https://noor-alawsiya.com/c/00EXAMP1",
+   "ok": true
+  }
+ ],
+ "pdf": [
+  {
+   "file": "pdf/certificate-base.pdf",
+   "bytes": 55845,
+   "pages": 1,
+   "mediaBoxPt": [
+    0,
+    0,
+    841.91998,
+    594.95996
+   ],
+   "fonts": [
+    "AAAAAA+IBMPlexSansArabic-SemiBold",
+    "BAAAAA+ArefRuqaa-Bold",
+    "CAAAAA+IBMPlexSansArabic-Regular",
+    "DAAAAA+Amiri-Bold",
+    "EAAAAA+IBMPlexSansArabic-Bold"
+   ],
+   "embeddedFontFiles": 5,
+   "type3Fonts": 0,
+   "textHasCode": true,
+   "ok": true
+  },
+  {
+   "file": "pdf/certificate-max80.pdf",
+   "bytes": 60824,
+   "pages": 1,
+   "mediaBoxPt": [
+    0,
+    0,
+    841.91998,
+    594.95996
+   ],
+   "fonts": [
+    "AAAAAA+IBMPlexSansArabic-SemiBold",
+    "BAAAAA+ArefRuqaa-Bold",
+    "CAAAAA+IBMPlexSansArabic-Regular",
+    "DAAAAA+Amiri-Bold",
+    "EAAAAA+IBMPlexSansArabic-Bold"
+   ],
+   "embeddedFontFiles": 5,
+   "type3Fonts": 0,
+   "textHasCode": true,
+   "ok": true
+  },
+  {
+   "file": "pdf/certificate-fullest.pdf",
+   "bytes": 65751,
+   "pages": 1,
+   "mediaBoxPt": [
+    0,
+    0,
+    841.91998,
+    594.95996
+   ],
+   "fonts": [
+    "AAAAAA+IBMPlexSansArabic-SemiBold",
+    "BAAAAA+ArefRuqaa-Bold",
+    "CAAAAA+IBMPlexSansArabic-Regular",
+    "DAAAAA+Amiri-Bold",
+    "EAAAAA+IBMPlexSansArabic-Bold"
+   ],
+   "embeddedFontFiles": 5,
+   "type3Fonts": 0,
+   "textHasCode": true,
+   "ok": true
+  }
+ ],
+ "verifyPage": [
+  {
+   "state": "valid",
+   "width": 375,
+   "sideScroll": false,
+   "tapsUnder44": [],
+   "dir": "rtl"
+  },
+  {
+   "state": "valid",
+   "width": 768,
+   "sideScroll": false,
+   "tapsUnder44": [],
+   "dir": "rtl"
+  },
+  {
+   "state": "valid",
+   "width": 1440,
+   "sideScroll": false,
+   "tapsUnder44": [],
+   "dir": "rtl"
+  },
+  {
+   "state": "revoked",
+   "width": 375,
+   "sideScroll": false,
+   "tapsUnder44": [],
+   "dir": "rtl"
+  },
+  {
+   "state": "unknown",
+   "width": 375,
+   "sideScroll": false,
+   "tapsUnder44": [],
+   "dir": "rtl"
+  },
+  {
+   "state": "form",
+   "width": 375,
+   "sideScroll": false,
+   "tapsUnder44": [],
+   "dir": "rtl"
+  },
+  {
+   "state": "busy",
+   "width": 375,
+   "sideScroll": false,
+   "tapsUnder44": [],
+   "dir": "rtl"
+  }
+ ],
+ "negativeControl": {
+  "what": "a4/max80 with ?nofit=1",
+  "caught": true,
+  "problems": [
+   "#name span leaves the safe area",
+   "name wider than its box"
+  ]
+ },
+ "failures": [],
+ "qrSizeMm": 25,
+ "ok": true
+}

@@ -1,0 +1,16 @@
+/* صفحة التحقق /c/<الرمز>: الجديد فقط. الباقي من الموقع كما هو (.auth, .card.box, .logo, .alert, .field, .inp, .btn).
+   البناء ينقل هذه القواعد إلى app/forms.css. */
+.auth .box.verify { width: min(480px, 100%); }
+.facts { margin: 0 0 18px; display: grid; gap: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+.facts div { display: grid; grid-template-columns: 112px 1fr; gap: 12px; padding: 11px 16px; border-top: 1px solid var(--line); font-size: 15px; }
+.facts div:first-child { border-top: 0; }
+.facts dt { color: var(--mute); font-size: 13.5px; padding-top: 2px; }
+.facts dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.facts dd.big { font-size: 18px; font-weight: 700; line-height: 1.5; }
+.facts dd .num { font-weight: 700; letter-spacing: 0.04em; }
+.verify .note { font-size: 13.5px; color: var(--mute); text-align: center; margin-bottom: 18px; }
+.verify form { margin-top: 4px; }
+.verify .inp.code { direction: ltr; text-align: center; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+@media (max-width: 420px) {
+  .facts div { grid-template-columns: 1fr; gap: 0; }
+}

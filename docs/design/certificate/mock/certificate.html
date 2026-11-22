@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>نموذج شهادة الإتمام · نور الأوصياء</title>
+<link rel="stylesheet" href="../certificate.css">
+<style>
+  html, body { margin: 0; background: #d9d6c9; }
+  body.bare { background: #fff; }
+  body:not(.bare) { padding: 24px; display: grid; justify-content: center; }
+  body:not(.bare) .cert { box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25); }
+  body.grey .cert { filter: grayscale(1); }
+  @media print { body, body:not(.bare) { padding: 0; display: block; background: #fff; } body:not(.bare) .cert { box-shadow: none; } }
+</style>
+</head>
+<body>
+<!--
+  نموذج تصميم فقط. يفتح من الملف مباشرة (file://) بلا خادم.
+  ?s=base|long40|long58|max80|wide|sparse|stress80|onetoken   العيّنة (mock/samples.js)
+  ?f=a4|sq        الصيغة: A4 بالعرض (افتراضي) أو المربع 1080
+  ?nf=ruqaa       خيار بديل لخط الاسم (للمقارنة فقط)
+  ?grey=1         معاينة رمادية
+  ?nofit=1        يعطّل قاعدة الملاءمة (لاختبار أن الفحص يكشف الخروج عن الصندوق)
+  ?bare=1         بلا خلفية ولا ظل (للتصوير و PDF)
+-->
+<div id="cert"></div>
+<script src="samples.js"></script>
+<script src="qr.js"></script>
+<script src="fit.js"></script>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var f = q.get('f') === 'sq' ? 'sq' : 'a4';
+  var d = window.CERT_SAMPLES[q.get('s') || 'base'] || window.CERT_SAMPLES.base;
+  if (q.get('bare')) document.body.classList.add('bare');
+  if (q.get('grey')) document.body.classList.add('grey');
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  function star(fill, stroke) {
+    return '<svg viewBox="0 0 48 48" aria-hidden="true"><g fill="' + fill + '" stroke="' + stroke + '" stroke-width="1.6">' +
+      '<rect x="10" y="10" width="28" height="28"/><rect x="10" y="10" width="28" height="28" transform="rotate(45 24 24)"/></g>' +
+      '<circle cx="24" cy="24" r="5.5" fill="' + stroke + '"/></svg>';
+  }
+
+  function qrSvg(rows) {
+    var n = rows.length, quiet = 4, size = n + quiet * 2, p = '';
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (rows[r][c] === '1') p += 'M' + (c + quiet) + ' ' + (r + quiet) + 'h1v1h-1z';
+    return '<svg viewBox="0 0 ' + size + ' ' + size + '" shape-rendering="crispEdges" role="img" aria-label="رمز التحقق من الشهادة"><rect width="' + size + '" height="' + size + '" fill="#fff"/><path d="' + p + '" fill="#000"/></svg>';
+  }
+
+  var dates = d.start ? 'من ' + esc(d.start) + ' إلى ' + esc(d.end) : 'أُتمّت في ' + esc(d.end);
+  var meta = (d.kind ? '<b>' + esc(d.kind) + '</b> · ' : '') + dates;
+  var starFill = f === 'a4' ? '#fffa00' : '#0b0b0c', starStroke = f === 'a4' ? '#0b0b0c' : '#fffa00';
+
+  var el = document.getElementById('cert');
+  el.className = 'cert ' + f + (q.get('nf') === 'ruqaa' ? ' nf-ruqaa' : '');
+  el.setAttribute('lang', 'ar');
+  el.setAttribute('dir', 'rtl');
+  el.innerHTML =
+    '<div class="specimen">نموذج تصميم · أسماء غير حقيقية</div>' +
+    '<div class="frame"></div>' +
+    ['tr', 'tl', 'br', 'bl'].map(function (c) { return '<div class="star ' + c + '">' + star(starFill, starStroke) + '</div>'; }).join('') +
+    '<div class="body">' +
+      '<div class="crest"><img src="../../../../public/img/mark-black.png" alt="شعار ' + esc(d.school.name) + '"></div>' +
+      '<p class="school">' + esc(d.school.name) + ' · ' + esc(d.school.city) + '</p>' +
+      '<h1 class="title">شهادة إتمام</h1>' +
+      '<div class="bar"></div>' +
+      '<p class="lead">تُمنح هذه الشهادة إلى</p>' +
+      '<div class="name" id="name"></div>' +
+      '<div class="rule"><i></i></div>' +
+      '<p class="for">لإتمام</p>' +
+      '<h2 class="course" id="course">' + esc(d.course) + '</h2>' +
+      '<p class="meta">' + meta + '</p>' +
+      '<div class="foot">' +
+        '<div class="sig"><div class="line"></div><b>' + esc(d.teacher) + '</b><small>التدريس</small></div>' +
+        '<div class="sig"><div class="line"></div><b>' + esc(d.director) + '</b><small>مدير المدرسة</small></div>' +
+        '<div class="org">' + esc(d.school.name) + '<small>' + esc(d.school.city) + ' · ' + esc(d.issued) + '</small></div>' +
+        '<div class="verify">' +
+          '<div class="qr">' + qrSvg(window.CERT_QR[d.verify.url]) + '</div>' +
+          '<div class="v">' +
+            '<small>' + (f === 'a4' ? 'رقم الشهادة' : 'للتحقق من الشهادة') + '</small>' +
+            '<span class="code ltr">' + esc(d.verify.code) + '</span>' +
+            '<small class="how">للتحقق امسح الرمز أو افتح</small>' +
+            '<span class="url ltr">' + esc(d.verify.host) + '/c/' + esc(d.verify.code) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<p class="issued">صدرت في ' + esc(d.school.city) + ' بتاريخ ' + esc(d.issued) + '</p>' +
+    '</div>';
+
+  function run() {
+    var nameEl = document.getElementById('name');
+    var family = getComputedStyle(nameEl).fontFamily;
+    var ctx = document.createElement('canvas').getContext('2d');
+    // canvas يقيس بالبكسل؛ النسبة عرض/حجم ثابتة، فنقيس عند 100px ونضرب.
+    function measure(text, size) { ctx.font = '700 100px ' + family; return ctx.measureText(text).width * size / 100; }
+    var fit = q.get('nofit')
+      ? { lines: [CertFit.clean(d.name)], size: CertFit.FIT[f].one[0], step: 'nofit' }
+      : CertFit.fitName(d.name, f, measure);
+    nameEl.style.fontSize = fit.size + (f === 'a4' ? 'pt' : 'px');
+    nameEl.innerHTML = fit.lines.map(function (l) { return '<span>' + esc(l) + '</span>'; }).join('');
+    nameEl.dataset.step = fit.step;
+    nameEl.dataset.size = fit.size;
+
+    // الحقول التي قد تطول: جرّب الدرجات بالترتيب وقف عند أول درجة يبقى فيها النص ضمن عدد أسطرها وعرض صندوقه.
+    // الدرجة = [صنف CSS، أقصى عدد أسطر]. عدّ الأسطر من مواضع النص نفسها (لا من scrollHeight: مقاييس الخط تزيد عليه).
+    function lineCount(node) {
+      var r = document.createRange();
+      r.selectNodeContents(node);
+      var tops = Array.prototype.map.call(r.getClientRects(), function (q) { return q.top; }).sort(function (x, y) { return x - y; });
+      var half = parseFloat(getComputedStyle(node).fontSize) / 2, n = 0, lastTop = -1e9;
+      tops.forEach(function (t) { if (t - lastTop > half) { n++; lastTop = t; } });
+      return n;
+    }
+    function steps(node, list) {
+      var i, chosen = list[list.length - 1];
+      for (i = 0; i < list.length; i++) {
+        node.classList.remove('s2', 's3');
+        if (list[i][0]) node.classList.add(list[i][0]);
+        if (lineCount(node) <= list[i][1] && node.scrollWidth <= node.clientWidth + 1) { chosen = list[i]; break; }
+      }
+      node.dataset.step = chosen[0] || 's1';
+      node.dataset.maxLines = chosen[1];
+    }
+    steps(document.getElementById('course'), [['', 1], ['s2', 2], ['s3', 3]]);
+    steps(el.querySelector('.meta'), [['', 2], ['s2', 2]]);
+    el.querySelectorAll('.sig b').forEach(function (n) { steps(n, [['', 2], ['s2', 3]]); });
+    document.documentElement.dataset.ready = '1';
+  }
+  document.fonts.ready.then(function () {
+    return Promise.all(['700 40px "Cert Name"', '700 40px "Cert Brand"', '400 16px "Cert UI"', '600 16px "Cert UI"', '700 16px "Cert UI"'].map(function (x) { return document.fonts.load(x, 'نور'); }));
+  }).then(run);
+})();
+</script>
+</body>
+</html>
