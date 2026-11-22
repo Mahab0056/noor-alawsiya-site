@@ -1,8 +1,10 @@
 import 'server-only';
-import { dummyHash, hashPassword, isThrottled, MIN_PASSWORD, newTotpSecret, normalizeEmail, normalizePhone, recordAttempt, seal, unseal, matchTotpStep, verifyPassword } from './auth';
+import { timingSafeEqual } from 'node:crypto';
+import { dummyHash, hashLoginCode, hashPassword, isThrottled, MIN_PASSWORD, newLoginCode, normalizeDigits, normalizeEmail, normalizePhone, recordAttempt, verifyPassword } from './auth';
 import type { Db } from './db';
+import { adminCodeMail, sendEmail, type Mailer } from './email';
 
-/** Logging in: students by phone and password, admins by email, password and a TOTP code. */
+/** Logging in: students by phone and password, admins by a six-digit code emailed to them. */
 
 import { MAX_ACCOUNTS_PER_PHONE } from './form-rules';
 
@@ -37,43 +39,86 @@ export async function loginStudent(db: Db, phoneInput: string, password: string,
 }
 
 export type AdminLogin = { ok: true; adminId: number } | { ok: false; reason: LoginFailure };
+export type CodeRequest = { ok: true } | { ok: false; reason: 'throttled' | 'send-failed' };
 
-/** Password and TOTP are checked together and fail the same way, so a wrong code does not confirm the password. */
-export async function loginAdmin(db: Db, emailInput: string, password: string, code: string, ip: string): Promise<AdminLogin> {
+const CODE_TTL_MINUTES = 10;
+const RESEND_AFTER_MS = 60_000; // a second press within the minute re-uses the code already on its way
+
+/**
+ * Sends a login code to an admin's address. An unknown address is answered the same way and
+ * nothing is sent, so the form never reveals who is an admin.
+ */
+export async function requestAdminCode(db: Db, emailInput: string, ip: string, send: Mailer = sendEmail): Promise<CodeRequest> {
   const email = normalizeEmail(emailInput).slice(0, 200);
   if (await isThrottled(db, 'admin', email, ip)) return { ok: false, reason: 'throttled' };
 
-  const [admin] = await db.query<{ id: string; password_hash: string; totp_secret: string | null; totp_last_step: string | null }>(
-    'select id, password_hash, totp_secret, totp_last_step from admins where lower(email) = $1',
+  const [admin] = await db.query<{ id: string }>('select id from admins where lower(email) = $1', [email]);
+  if (!admin) return { ok: true };
+
+  await db.query(`delete from admin_login_codes where created_at < now() - interval '1 day'`);
+  const [recent] = await db.query<{ created_at: Date }>(
+    'select created_at from admin_login_codes where admin_id = $1 and consumed_at is null and expires_at > now() order by created_at desc limit 1',
+    [admin.id]
+  );
+  if (recent && Date.now() - new Date(recent.created_at).getTime() < RESEND_AFTER_MS) return { ok: true };
+
+  const code = newLoginCode();
+  // Only the newest code works: an older one left in an inbox stops being a way in.
+  await db.query('delete from admin_login_codes where admin_id = $1 and consumed_at is null', [admin.id]);
+  await db.query(`insert into admin_login_codes (admin_id, code_hash, expires_at) values ($1, $2, now() + interval '${CODE_TTL_MINUTES} minutes')`, [admin.id, hashLoginCode(code)]);
+  try {
+    await send({ to: email, ...adminCodeMail(code) });
+  } catch {
+    // The sender logs the reason. Drop the code so a failed send leaves nothing usable behind.
+    await db.query('delete from admin_login_codes where admin_id = $1 and consumed_at is null', [admin.id]);
+    return { ok: false, reason: 'send-failed' };
+  }
+  return { ok: true };
+}
+
+/** Checks an emailed code. A code is good once, for ten minutes, and only for the newest request. */
+export async function verifyAdminCode(db: Db, emailInput: string, codeInput: string, ip: string): Promise<AdminLogin> {
+  const email = normalizeEmail(emailInput).slice(0, 200);
+  if (await isThrottled(db, 'admin', email, ip)) return { ok: false, reason: 'throttled' };
+
+  const digits = normalizeDigits(codeInput);
+  const [row] = await db.query<{ id: string; admin_id: string; code_hash: string }>(
+    `select c.id, c.admin_id, c.code_hash from admin_login_codes c
+     join admins a on a.id = c.admin_id
+     where lower(a.email) = $1 and c.consumed_at is null and c.expires_at > now()
+     order by c.created_at desc limit 1`,
     [email]
   );
-  const passwordOk = await verifyPassword(admin?.password_hash ?? (await dummyHash()), password);
-  const step = admin?.totp_secret ? matchTotpStep(unseal(admin.totp_secret), code) : null;
-  // A code is good once: a step at or before the last accepted one is refused, so an observed code cannot be replayed.
-  const codeOk = step !== null && step > Number(admin?.totp_last_step ?? 0);
-  if (admin && passwordOk && codeOk) {
+  // Compare against a hash either way, so an unknown address and a wrong code take the same path.
+  const given = Buffer.from(hashLoginCode(digits));
+  const expected = Buffer.from(row?.code_hash ?? hashLoginCode('no-such-code'));
+  const match = /^\d{6}$/.test(digits) && given.length === expected.length && timingSafeEqual(given, expected);
+
+  if (row && match) {
+    await db.query('update admin_login_codes set consumed_at = now() where id = $1', [row.id]);
+    await db.query('update admins set last_login_at = now() where id = $1', [row.admin_id]);
     await recordAttempt(db, 'admin', email, ip, true);
-    await db.query('update admins set last_login_at = now(), totp_last_step = $2 where id = $1', [admin.id, step]);
-    return { ok: true, adminId: Number(admin.id) };
+    return { ok: true, adminId: Number(row.admin_id) };
   }
   await recordAttempt(db, 'admin', email, ip, false);
   return { ok: false, reason: 'invalid' };
 }
 
-/** Creates an admin with two-step verification on from the start. Returns the TOTP secret to show once. */
-export async function createAdmin(db: Db, input: { name: string; email: string; password: string; role?: 'owner' | 'staff' }) {
+/**
+ * Creates an admin. The address is the whole credential: login is by a code sent to it.
+ * A password may still be stored for an account that wants one, but nothing requires it.
+ */
+export async function createAdmin(db: Db, input: { name: string; email: string; password?: string; role?: 'owner' | 'staff' }) {
   const email = normalizeEmail(input.email);
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Invalid email.');
-  if (input.password.length < Math.max(MIN_PASSWORD, 12)) throw new Error('Admin passwords need at least 12 characters.');
-  const secret = newTotpSecret();
-  const [row] = await db.query<{ id: string }>('insert into admins (name, email, password_hash, totp_secret, role) values ($1, $2, $3, $4, $5) returning id', [
+  if (input.password !== undefined && input.password.length < Math.max(MIN_PASSWORD, 12)) throw new Error('Admin passwords need at least 12 characters.');
+  const [row] = await db.query<{ id: string }>('insert into admins (name, email, password_hash, role) values ($1, $2, $3, $4) returning id', [
     input.name.trim(),
     email,
-    await hashPassword(input.password),
-    seal(secret),
+    input.password === undefined ? null : await hashPassword(input.password),
     input.role ?? 'staff',
   ]);
-  return { adminId: Number(row.id), totpSecret: secret };
+  return { adminId: Number(row.id) };
 }
 
 export type StudentProfile = { id: number; fullName: string; phone: string };
