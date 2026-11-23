@@ -161,9 +161,9 @@ test('the course filter narrows the list and the per-status counts', async () =>
   assert.deepEqual(keys(await listRequests(db, 'accepted', { courseId: nagham })), []);
   assert.deepEqual(await listRequests(db, 'pending', { courseId: quiet }), []);
   assert.deepEqual(await listRequests(db, 'pending', { courseId: 999999 }), []);
-  assert.deepEqual(await countRequests(db), { pending: 5, accepted: 1, rejected: 1 });
-  assert.deepEqual(await countRequests(db, tajweed), { pending: 3, accepted: 1, rejected: 0 });
-  assert.deepEqual(await countRequests(db, nagham), { pending: 2, accepted: 0, rejected: 1 });
+  assert.deepEqual(await countRequests(db), { pending: 5, accepted: 1, rejected: 1, duplicate: 0 });
+  assert.deepEqual(await countRequests(db, tajweed), { pending: 3, accepted: 1, rejected: 0, duplicate: 0 });
+  assert.deepEqual(await countRequests(db, nagham), { pending: 2, accepted: 0, rejected: 1, duplicate: 0 });
 });
 
 test('the course filter lists courses with requests or open registration, busiest first, with their waiting count', async () => {

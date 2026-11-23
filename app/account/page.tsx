@@ -8,6 +8,7 @@ import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { courseRequestContext, MAX_ACCOUNT_REQUESTS_PER_DAY } from '@/lib/course-requests';
 import { ar, CONTACT } from '@/lib/data';
 import { getDb } from '@/lib/db';
+import { duplicateHintsOn } from '@/lib/duplicates';
 import { formatDate, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
 import { listStudentRegistrations, type RegistrationStatus } from '@/lib/registration';
 import { requireStudent } from '@/lib/session';
@@ -19,6 +20,7 @@ const EXPLAIN: Record<RegistrationStatus, string> = {
   pending: 'وصل طلبك إلى إدارة المدرسة وهو قيد المراجعة. ستظهر النتيجة هنا.',
   accepted: 'قُبل طلبك. ستتواصل معك إدارة المدرسة بموعد الحلقة ومكانها.',
   rejected: 'لم يُقبل الطلب هذه المرة. يمكنك التواصل مع إدارة المدرسة للاستفسار.',
+  duplicate: 'وصلنا هذا الطلب مرتين، فأُغلقت هذه النسخة حتى لا يُراجع مرتين. تظهر النتيجة على الطلب الأول.',
 };
 
 export default function AccountPage({ searchParams }: PageProps<'/account'>) {
@@ -45,6 +47,8 @@ async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchPara
   const [requests, ctx, params] = await Promise.all([listStudentRegistrations(db, student.id), courseRequestContext(db, student.id), searchParams]);
   const showWelcome = welcomeEnabled(); // flag WELCOME_PAGE: off = no link
   const choices = ctx?.courses.filter((c) => c.taken === null) ?? [];
+  // DUPLICATE_HINTS on, and the family had already sent this course on the same phone: say so rather than a second «وصل».
+  const again = duplicateHintsOn() && requests.some((r) => r.status === 'pending' && r.copy);
   return (
     <>
       <div className="ph">
@@ -65,8 +69,17 @@ async function Account({ searchParams }: Pick<PageProps<'/account'>, 'searchPara
             <Icon name="check" />
           </span>
           <div>
-            <h2 id="done-title">وصل طلب التسجيل</h2>
-            <p>تراجع إدارة المدرسة الطلب، وتظهر النتيجة في هذه الصفحة.</p>
+            {again ? (
+              <>
+                <h2 id="done-title">طلبك وصلنا قبل، وننتظر نراجعه</h2>
+                <p>لا حاجة لإرسال الاستمارة مرة ثانية. تراجع إدارة المدرسة الطلب الأول، وتظهر النتيجة في هذه الصفحة.</p>
+              </>
+            ) : (
+              <>
+                <h2 id="done-title">وصل طلب التسجيل</h2>
+                <p>تراجع إدارة المدرسة الطلب، وتظهر النتيجة في هذه الصفحة.</p>
+              </>
+            )}
             <p>
               للعودة إليها لاحقاً: ادخل برقم الهاتف <b className="num">{student.phone}</b> وكلمة المرور التي اخترتها.
             </p>

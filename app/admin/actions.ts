@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { requestAdminCode, verifyAdminCode } from '@/lib/accounts';
 import { addQuestion, moveQuestion, recordNotified, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
 import { getDb } from '@/lib/db';
+import { duplicateHintsOn, markDuplicate } from '@/lib/duplicates';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
 import { clientIp, endSession, requireAdmin, startSession } from '@/lib/session';
 
@@ -19,7 +20,7 @@ const id = (form: FormData) => {
   return Number.isSafeInteger(n) && n > 0 ? n : null;
 };
 
-const STATUSES: RegistrationStatus[] = ['pending', 'accepted', 'rejected'];
+const STATUSES: RegistrationStatus[] = ['pending', 'accepted', 'rejected', 'duplicate'];
 const KINDS: QuestionKind[] = ['single', 'multi', 'yes_no', 'text'];
 
 // Login is in two steps, both through this one action: ask for a code, then send it back.
@@ -64,6 +65,21 @@ export async function reviewAction(form: FormData) {
     redirect(`/admin?status=${decision}${course}&id=${requestId}&done=1#request`); // show the request in its new list, still open
   }
   redirect(`/admin?status=${from}${course}`);
+}
+
+/**
+ * «اعتبره مكرر» (DUPLICATE_HINTS on): closes a waiting request as a copy of one of its hints. Not a rejection, and
+ * nothing is sent. With the flag off the action does nothing, whatever is posted.
+ */
+export async function duplicateAction(form: FormData) {
+  const admin = await requireAdmin();
+  const requestId = id(form);
+  const of = /^\d{1,15}$/.test(text(form, 'of')) ? Number(text(form, 'of')) : 0;
+  const course = /^\d{1,15}$/.test(text(form, 'course')) ? `&course=${text(form, 'course')}` : '';
+  if (!duplicateHintsOn() || !requestId || !Number.isSafeInteger(of) || of <= 0) redirect(`/admin?status=pending${course}`);
+  const result = await markDuplicate(await getDb(), admin.id, requestId, of);
+  if (result === 'saved') redirect(`/admin?status=duplicate${course}&id=${requestId}&done=dup#request`);
+  redirect(`/admin?status=pending${course}&id=${requestId}&dup=${result === 'not-pending' ? 'decided' : 'stale'}#request`);
 }
 
 /** «إبلاغ عبر واتساب» was pressed: the browser opens wa.me itself; this only writes the audit line (id, no phone). */

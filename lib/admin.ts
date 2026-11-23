@@ -17,7 +17,8 @@ export async function audit(db: Db, adminId: number | null, action: string, targ
 // ---------------------------------------------------------------- registration requests
 
 /** existingStudent: asked for from «حسابي» by a student who already had an account (0007), not with the registration form. */
-export type RequestRow = { id: number; studentName: string; birthYear: number; hasGuardian: boolean; course: string; status: RegistrationStatus; createdAt: Date; existingStudent: boolean };
+/** duplicateOf (0014): the request this one was stored or closed as a copy of. */
+export type RequestRow = { id: number; studentName: string; birthYear: number; hasGuardian: boolean; course: string; status: RegistrationStatus; createdAt: Date; existingStudent: boolean; duplicateOf: number | null };
 
 /**
  * One status, optionally one course. Default order: waiting requests oldest first (lib/queue.ts defaultSort), so the
@@ -29,13 +30,13 @@ export async function listRequests(
   { courseId = null, sort = status === 'pending' ? 'oldest' : 'newest' }: { courseId?: number | null; sort?: QueueSort } = {}
 ): Promise<RequestRow[]> {
   const order = sort === 'oldest' ? 'r.created_at asc, r.id asc' : 'r.created_at desc, r.id desc';
-  const rows = await db.query<{ id: string; full_name: string; birth_year: number; has_guardian: boolean; course: string; status: RegistrationStatus; created_at: Date; origin: string }>(
-    `select r.id, s.full_name, s.birth_year, (s.guardian_consent_at is not null) as has_guardian, c.name as course, r.status, r.created_at, r.origin
+  const rows = await db.query<{ id: string; full_name: string; birth_year: number; has_guardian: boolean; course: string; status: RegistrationStatus; created_at: Date; origin: string; duplicate_of: string | null }>(
+    `select r.id, s.full_name, s.birth_year, (s.guardian_consent_at is not null) as has_guardian, c.name as course, r.status, r.created_at, r.origin, r.duplicate_of
      from registrations r join students s on s.id = r.student_id join courses c on c.id = r.course_id
      where r.status = $1 and ($2::bigint is null or r.course_id = $2::bigint) order by ${order} limit 200`,
     [status, courseId]
   );
-  return rows.map((r) => ({ id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at), existingStudent: r.origin === 'account' }));
+  return rows.map((r) => ({ id: Number(r.id), studentName: r.full_name, birthYear: r.birth_year, hasGuardian: r.has_guardian, course: r.course, status: r.status, createdAt: new Date(r.created_at), existingStudent: r.origin === 'account', duplicateOf: r.duplicate_of === null ? null : Number(r.duplicate_of) }));
 }
 
 /** Requests per status, for every course or for one. */
@@ -44,7 +45,7 @@ export async function countRequests(db: Db, courseId: number | null = null): Pro
     'select status, count(*) as n from registrations where ($1::bigint is null or course_id = $1::bigint) group by status',
     [courseId]
   );
-  const out: Record<RegistrationStatus, number> = { pending: 0, accepted: 0, rejected: 0 };
+  const out: Record<RegistrationStatus, number> = { pending: 0, accepted: 0, rejected: 0, duplicate: 0 };
   for (const r of rows) out[r.status] = Number(r.n);
   return out;
 }
@@ -87,11 +88,11 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
   const [r] = await db.query<{
     id: string; full_name: string; birth_year: number; phone: string; guardian_name: string | null; guardian_phone: string | null; has_guardian: boolean;
     course: string; teacher: string; status: RegistrationStatus; admin_note: string | null; created_at: Date; reviewed_at: Date | null;
-    origin: string; student_note: string | null; request_consent_at: Date | null;
+    origin: string; student_note: string | null; request_consent_at: Date | null; duplicate_of: string | null;
   }>(
     `select r.id, s.full_name, s.birth_year, s.phone, s.guardian_name, s.guardian_phone, (s.guardian_consent_at is not null) as has_guardian,
             c.name as course, c.teacher, r.status, r.admin_note, r.created_at, r.reviewed_at,
-            r.origin, r.student_note, r.guardian_consent_at as request_consent_at
+            r.origin, r.student_note, r.guardian_consent_at as request_consent_at, r.duplicate_of
      from registrations r join students s on s.id = r.student_id join courses c on c.id = r.course_id
      where r.id = $1`,
     [id]
@@ -106,6 +107,7 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
     phone: r.phone, guardianName: r.guardian_name, guardianPhone: r.guardian_phone, teacher: r.teacher, adminNote: r.admin_note,
     reviewedAt: r.reviewed_at ? new Date(r.reviewed_at) : null,
     existingStudent: r.origin === 'account', studentNote: r.student_note, requestConsentAt: r.request_consent_at ? new Date(r.request_consent_at) : null,
+    duplicateOf: r.duplicate_of === null ? null : Number(r.duplicate_of),
     answers: answers.map((a) => ({ label: a.label, answer: Array.isArray(a.answer) ? a.answer.join('، ') : String(a.answer) })),
   };
 }
@@ -142,7 +144,7 @@ export async function reviewRequest(db: Db, adminId: number, id: number, decisio
 export async function recordNotified(db: Db, adminId: number, id: number) {
   return db.tx(async (t) => {
     const [r] = await t.query<{ status: RegistrationStatus }>('select status from registrations where id = $1', [id]);
-    if (!r || r.status === 'pending') return false;
+    if (!r || (r.status !== 'accepted' && r.status !== 'rejected')) return false; // a closed copy has no message to send
     await audit(t, adminId, 'registration.notified', `registration:${id}`, { decision: r.status });
     return true;
   });

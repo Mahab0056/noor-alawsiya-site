@@ -183,3 +183,15 @@ fieldset.q > legend + * { clear: both; }
 .welcome ul { margin: 0; padding-inline-start: 20px; display: grid; gap: 6px; }
 .welcome .gap { background: #fff3cd; color: #5c4400; border: 1px dashed #b38600; border-radius: 6px; padding: 1px 8px; overflow-wrap: anywhere; }
 .welcome .num { white-space: nowrap; }
+
+/* «يمكن مكرر» (DUPLICATE_HINTS): a hint, not a status, so outlined rather than filled. */
+.tag.dup { background: #fff; color: var(--warn); box-shadow: inset 0 0 0 1.5px var(--warn); }
+.who .tag.dup, .hd .tag.dup { margin-top: 4px; }
+.drawer .dupbox { margin: 12px 22px 0; padding: 12px 14px; border-radius: 12px; background: var(--warn-bg); display: grid; gap: 8px; }
+.drawer .dupbox h3 { font-size: 15px; margin: 0; }
+.drawer .dupbox ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.drawer .dupbox li a { font-weight: 600; min-height: 32px; display: inline-flex; align-items: center; }
+.drawer .dupbox li small { display: block; color: var(--mute); font-size: 13px; }
+.drawer .dupbox .hint { margin: 0; font-size: 13px; color: var(--ink); line-height: 1.6; }
+.drawer .dupbox .dupact { display: grid; gap: 8px; }
+.drawer .dupbox .dupact .btn { min-height: 44px; }
