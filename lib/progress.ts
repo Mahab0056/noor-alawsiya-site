@@ -30,8 +30,23 @@ const MAX_BACK_DAYS = 366;
 export const isTeacherRole = (role: AdminRole) => role === 'teacher';
 
 const DIGITS = new Intl.NumberFormat('ar-EG', { useGrouping: false });
-/** «طالب واحد» / «طالبان» / «٣ طلاب» / «١١ طالباً»: the counted noun agrees with the number. */
-export const pupilsText = (n: number) => (n === 1 ? 'طالب واحد' : n === 2 ? 'طالبان' : `${DIGITS.format(n)} ${n >= 3 && n <= 10 ? 'طلاب' : 'طالباً'}`);
+/** Which form a counted noun takes after n (n ≥ 3): 3–10 plural, 11–99 singular accusative, otherwise singular. */
+const countForm = (n: number) => {
+  const r = n % 100;
+  return r >= 3 && r <= 10 ? 'plural' : r >= 11 ? 'acc' : 'one';
+};
+/** «طالب واحد» / «طالبان» / «٣ طلاب» / «١١ طالباً» / «١٠٠ طالب»: the counted noun agrees with the number. */
+export const pupilsText = (n: number) =>
+  n === 1 ? 'طالب واحد' : n === 2 ? 'طالبان' : `${DIGITS.format(n)} ${{ plural: 'طلاب', acc: 'طالباً', one: 'طالب' }[countForm(n)]}`;
+/** The roster heading: «طالب واحد مقبول» / «طالبان مقبولان» / «٦ طلاب مقبولون» / «١١ طالباً مقبولاً». */
+export const acceptedText = (n: number) =>
+  n === 1 ? 'طالب واحد مقبول' : n === 2 ? 'طالبان مقبولان' : `${pupilsText(n)} ${{ plural: 'مقبولون', acc: 'مقبولاً', one: 'مقبول' }[countForm(n)]}`;
+/** «حسابي»: «حضور مريم: ١ من حلقتين مسجّلتين.» No verb, so nothing to get wrong for a girl's name. */
+export const attendedText = (firstName: string, present: number, total: number) => {
+  const of = total === 1 ? 'حلقة واحدة مسجّلة' : total === 2 ? 'حلقتين مسجّلتين'
+    : `${DIGITS.format(total)} ${{ plural: 'حلقات مسجّلة', acc: 'حلقة مسجّلة', one: 'حلقة مسجّلة' }[countForm(total)]}`;
+  return `حضور ${firstName}: ${DIGITS.format(present)} من ${of}.`;
+};
 
 // ---------------------------------------------------------------- Baghdad dates (YYYY-MM-DD)
 
@@ -195,18 +210,23 @@ export async function saveAttendance(db: Db, adminId: number, courseId: number, 
 
     let changed = 0;
     const counts = { present: 0, absent: 0, excused: 0 };
+    // Ids of the pupils whose row this save wrote, so an edit to a note a guardian may have read can be traced to
+    // the pupil and the admin. Ids only, as everywhere in the audit log.
+    const written: number[] = [];
     for (const c of clean) {
       counts[c.status]++;
       const old = before.get(c.studentId);
       if (old && old.status === c.status && old.note === c.note) continue;
       if (old) changed++;
+      written.push(c.studentId);
       await t.query(
         `insert into session_attendance (session_id, student_id, status, note, recorded_by) values ($1, $2, $3, $4, $5)
          on conflict (session_id, student_id) do update set status = excluded.status, note = excluded.note, recorded_by = excluded.recorded_by, updated_at = now()`,
         [sessionId, c.studentId, c.status, c.note, adminId]
       );
     }
-    await audit(t, adminId, before.size ? 'attendance.edit' : 'attendance.save', `session:${sessionId}`, { ...counts, changed });
+    written.sort((a, b) => a - b);
+    await audit(t, adminId, before.size ? 'attendance.edit' : 'attendance.save', `session:${sessionId}`, { ...counts, changed, students: written });
     return { ok: true, sessionId, ...counts, changed } as const;
   });
 }

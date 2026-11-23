@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { connection } from 'next/server';
+import { Fragment, Suspense } from 'react';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { CONTACT } from '@/lib/data';
 import { progressEnabled } from '@/lib/flags';
@@ -44,11 +46,17 @@ const BASE_SECTIONS: { title: string; items: string[] }[] = [
   },
 ];
 
-const sections = () =>
-  progressEnabled() ? BASE_SECTIONS.map((s, i) => (i === 0 ? { ...s, items: [...s.items.slice(0, 3), PROGRESS_ITEM, ...s.items.slice(3)] } : s)) : BASE_SECTIONS;
+/**
+ * The progress line follows the flag of the running server. With cacheComponents a page that reads nothing per request
+ * is prerendered once at build time, so without connection() the line would show whatever PROGRESS_TRACKING the build
+ * had (review awsiya-review-progress-build-2220r, M1). Only this line is per request; the rest of the page stays static.
+ */
+async function ProgressItem() {
+  await connection();
+  return progressEnabled() ? <li>{PROGRESS_ITEM}</li> : null;
+}
 
 export default function PrivacyPage() {
-  const SECTIONS = sections();
   return (
     <>
       <SiteHeader current="privacy" />
@@ -62,12 +70,19 @@ export default function PrivacyPage() {
         </section>
         <section className="sec" style={{ paddingTop: 40, paddingBottom: 0 }}>
           <div className="wrap prose">
-            {SECTIONS.map((s) => (
+            {BASE_SECTIONS.map((s, i) => (
               <div className="card pad" key={s.title}>
                 <h2>{s.title}</h2>
                 <ul>
-                  {s.items.map((item) => (
-                    <li key={item}>{item}</li>
+                  {s.items.map((item, j) => (
+                    <Fragment key={item}>
+                      {i === 0 && j === 3 ? (
+                        <Suspense fallback={null}>
+                          <ProgressItem />
+                        </Suspense>
+                      ) : null}
+                      <li>{item}</li>
+                    </Fragment>
                   ))}
                 </ul>
               </div>

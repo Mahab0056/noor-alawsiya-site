@@ -8,7 +8,7 @@ import { ar, CONTACT } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { progressEnabled } from '@/lib/flags';
 import { formatDate, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
-import { ATTENDANCE_LABEL, ATTENDANCE_TAG, baghdadToday, formatDay, pupilProgress, type PupilCourse } from '@/lib/progress';
+import { ATTENDANCE_LABEL, ATTENDANCE_TAG, attendedText, baghdadToday, formatDay, pupilProgress, type PupilCourse } from '@/lib/progress';
 import { listStudentRegistrations, type RegistrationStatus } from '@/lib/registration';
 import { requireStudent } from '@/lib/session';
 
@@ -132,7 +132,7 @@ function Progress({ p, firstName }: { p: PupilCourse; firstName: string }) {
           <p className="mute">لم يُسجَّل حضور بعد. يسجّل الأستاذ الحضور بعد كل حلقة، ويظهر هنا أول ما يسجّله. لا شيء مطلوب منك الآن.</p>
         ) : (
           <p className="pg-sum">
-            حضر {firstName} {ar(p.present)} من {ar(total)} {total === 1 ? 'حلقة مسجّلة' : 'حلقات مسجّلة'}.
+            {attendedText(firstName, p.present, total)}
             {p.absent ? ` غائب: ${ar(p.absent)}.` : ''}
             {p.excused ? ` مجاز: ${ar(p.excused)}.` : ''}
           </p>

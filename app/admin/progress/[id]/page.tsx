@@ -10,7 +10,7 @@ import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { progressEnabled } from '@/lib/flags';
 import {
-  baghdadToday, earliestDay, formatDay, getCourseName, getRoster, isDay, listAssignable, listCourseRecorders, listSessions, pupilsText, recordAccess,
+  acceptedText, baghdadToday, earliestDay, formatDay, getCourseName, getRoster, isDay, listAssignable, listCourseRecorders, listSessions, recordAccess,
 } from '@/lib/progress';
 import { requireRecorder } from '@/lib/session';
 
@@ -60,7 +60,7 @@ async function CourseDay({ params, searchParams }: Pick<PageProps<'/admin/progre
         <div>
           <h1>{course.name}</h1>
           <p>
-            {course.teacher}، {roster.rows.length ? `${pupilsText(roster.rows.length)} مقبولون` : 'لا طلاب مقبولون بعد'}
+            {course.teacher}، {roster.rows.length ? acceptedText(roster.rows.length) : 'لا طلاب مقبولون بعد'}
           </p>
         </div>
         <div className="sp">
