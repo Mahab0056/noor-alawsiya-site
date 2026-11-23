@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { canonicalRedirect, requestHost } from '@/lib/canonical-host';
 import { SESSION_COOKIE } from '@/lib/cookie-names';
+import { courseBySlug } from '@/lib/share';
 import { welcomeEnabled } from '@/lib/welcome-config';
 
 /**
@@ -20,6 +21,13 @@ export function proxy(request: NextRequest) {
   // Flag WELCOME_PAGE off (the default): /welcome/* is a real 404. Decided here, per request, so switching the flag needs no rebuild
   // (a page that reads the variable itself would keep the value it saw at build time).
   if ((pathname === '/welcome' || pathname.startsWith('/welcome/')) && !welcomeEnabled()) {
+    return NextResponse.rewrite(new URL('/welcome-is-off', request.url));
+  }
+  // Flag on: the page decides ownership inside <Suspense>, where a notFound() can only give the 404 page with status 200
+  // (Cache Components sends the shell first; node_modules/next/dist/docs/01-app/02-guides/streaming.md, «The HTTP contract»).
+  // The cases that need no database get a real 404 here: no student session cookie (guests, crawlers, an admin alone) and
+  // a slug that is no course. Nothing here depends on whose course it is, so the status tells nobody anything new.
+  if (pathname.startsWith('/welcome/') && (!request.cookies.has(SESSION_COOKIE.student) || !courseBySlug(pathname.slice('/welcome/'.length)))) {
     return NextResponse.rewrite(new URL('/welcome-is-off', request.url));
   }
 

@@ -1,6 +1,8 @@
 // «أهلاً بيك بالدورة»: flag, six sections with marked gaps, the WhatsApp text, and who may open the page. Invented data only; nothing is sent.
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
+import { NextRequest } from 'next/server';
+import { proxy } from '../proxy';
 import { createAdmin } from '@/lib/accounts';
 import { reviewRequest } from '@/lib/admin';
 import { resetDbForTests, type Db } from '@/lib/db';
@@ -68,6 +70,25 @@ test('flag off: the accept message is exactly the old one (decisionMessage is un
     decisionMessage('accepted', NAME, ORIGIN),
     ['السلام عليكم ورحمة الله وبركاته،', `من مدرسة نور الأوصياء للدراسات القرآنية: يسرّنا إبلاغكم بقبول طلب التسجيل في «${NAME}». ستتواصل معكم إدارة المدرسة بموعد الحلقة ومكانها.`, `التفاصيل في الحساب على الموقع: ${ORIGIN}/account`].join('\n')
   );
+});
+
+test('proxy: with the flag on, no student cookie or an unknown slug is a real 404 before the page streams', () => {
+  const was = process.env.WELCOME_PAGE;
+  const rewritten = (path: string, cookie?: string) =>
+    (proxy(new NextRequest(`http://localhost:8080${path}`, { headers: cookie ? { host: 'noor-alawsiya.com', cookie } : { host: 'noor-alawsiya.com' } })).headers.get('x-middleware-rewrite') ?? '').endsWith('/welcome-is-off');
+  try {
+    process.env.WELCOME_PAGE = '1';
+    assert.ok(rewritten(welcomePath(SLUG)), 'guest');
+    assert.ok(rewritten(welcomePath(SLUG), 'noor_a=x'), 'an admin cookie is not a student');
+    assert.ok(rewritten('/welcome/no-such-course', 'noor_s=x'), 'unknown slug, signed in');
+    // '/welcome' alone has no page, so Next answers it with a real 404 without the proxy.
+    assert.ok(!rewritten(welcomePath(SLUG), 'noor_s=x'), 'a student cookie reaches the page, which checks the session and the course');
+    delete process.env.WELCOME_PAGE;
+    assert.ok(rewritten(welcomePath(SLUG), 'noor_s=x'), 'flag off: 404 for everyone');
+  } finally {
+    if (was === undefined) delete process.env.WELCOME_PAGE;
+    else process.env.WELCOME_PAGE = was;
+  }
 });
 
 // ---------------------------------------------------------------- who may open it, on PGlite
