@@ -147,7 +147,10 @@ export type MarkDuplicateResult = 'saved' | 'missing' | 'not-pending' | 'not-a-h
  */
 export async function markDuplicate(db: Db, adminId: number, id: number, ofId: number, now = new Date()): Promise<MarkDuplicateResult> {
   return db.tx(async (t) => {
-    const [r] = await t.query<{ status: RegistrationStatus }>('select status from registrations where id = $1 for update', [id]);
+    // Both rows, in id order: two admins closing #5 as a copy of #6 and #6 as a copy of #5 at the same moment would
+    // otherwise both succeed and leave the family with no request in the queue. The second now waits, then finds no hint.
+    const locked = await t.query<{ id: number | string; status: RegistrationStatus }>('select id, status from registrations where id in ($1, $2) order by id for update', [id, ofId]);
+    const r = locked.find((x) => Number(x.id) === id);
     if (!r) return 'missing';
     if (r.status !== 'pending') return 'not-pending';
     const hints = (await duplicateHints(t, [id], now)).get(id) ?? [];
