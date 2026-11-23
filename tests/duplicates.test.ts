@@ -1,6 +1,6 @@
 // «يمكن مكرر» (awsiya-dev-duplicate-requests-2221): likely copies of a request are pointed out, «اعتبره مكرر» closes a
-// copy without counting as a rejection or sending anything, and a family sending the form again is told «طلبك وصلنا
-// قبل». Behind DUPLICATE_HINTS, default off. Invented data only; runs on PGlite, or on TEST_DATABASE_URL (throwaway).
+// copy without counting as a rejection or sending anything. The family's thank-you text stays the usual one (a different
+// text would reveal another family's request on that phone). Behind DUPLICATE_HINTS, default off. Invented data only; runs on PGlite, or on TEST_DATABASE_URL (throwaway).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after, before, test } from 'node:test';
@@ -221,5 +221,8 @@ test('the admin page and the form read the flag only through duplicateHintsOn()'
   assert.match(page, /hintsOn \? await duplicateHints\(/);
   assert.match(page, /\{hintsOn \? <DuplicateBox/);
   assert.match(readFileSync('app/admin/actions.ts', 'utf8'), /if \(!duplicateHintsOn\(\) \|\|/);
-  assert.match(readFileSync('app/account/page.tsx', 'utf8'), /const again = duplicateHintsOn\(\) &&/);
+  // The thank-you text after the public form never depends on other families' requests (review 2311r, M2).
+  const account = readFileSync('app/account/page.tsx', 'utf8');
+  assert.doesNotMatch(account, /duplicateHintsOn|\.copy\b|طلبك وصلنا قبل/);
+  assert.match(account, /<h2 id="done-title">وصل طلب التسجيل<\/h2>/);
 });
