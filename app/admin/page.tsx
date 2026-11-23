@@ -14,6 +14,7 @@ import { defaultSort, parseQueueView, pendingSummary, queueHref, STATUSES, WAIT_
 import type { RegistrationStatus } from '@/lib/registration';
 import { requireAdmin } from '@/lib/session';
 import { decisionMessage, DEFAULT_ORIGIN, notifyRecipient, whatsappLink } from '@/lib/whatsapp';
+import { welcomeEnabled, welcomeMessage, welcomeSlugFor } from '@/lib/welcome';
 
 export const metadata: Metadata = { title: 'طلبات التسجيل', robots: { index: false, follow: false } };
 
@@ -33,6 +34,12 @@ const siteOrigin = () => {
   }
 };
 
+/** The accept text is the welcome text only when WELCOME_PAGE is on and the course has a page; otherwise exactly the old message. */
+function notifyText(request: RequestDetail, status: 'accepted' | 'rejected') {
+  const slug = status === 'accepted' && welcomeEnabled() ? welcomeSlugFor(request.course) : undefined;
+  return slug ? welcomeMessage(request.course, siteOrigin(), slug) : decisionMessage(status, request.course, siteOrigin());
+}
+
 /** «إبلاغ عبر واتساب»: shown once a request is accepted or rejected. Opens a prepared chat on the admin's own phone. */
 function NotifyBox({ request, notifiedAt }: { request: RequestDetail; notifiedAt: Date | null }) {
   if (request.status === 'pending') return null;
@@ -42,7 +49,7 @@ function NotifyBox({ request, notifiedAt }: { request: RequestDetail; notifiedAt
     <div className="notify">
       {number ? (
         <>
-          <NotifyWhatsAppLink href={whatsappLink(number, decisionMessage(request.status, request.course, siteOrigin()))} requestId={request.id} describedBy="notify-hint">
+          <NotifyWhatsAppLink href={whatsappLink(number, notifyText(request, request.status))} requestId={request.id} describedBy="notify-hint">
             <Icon name="msg" size="s" />
             إبلاغ {who} عبر واتساب
             <span className="vh"> (يفتح واتساب في نافذة جديدة)</span>
