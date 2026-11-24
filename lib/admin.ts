@@ -55,6 +55,12 @@ export async function oldestPendingAt(db: Db): Promise<Date | null> {
   return row?.at ? new Date(row.at) : null;
 }
 
+/** How many requests still waiting were sent at or before `before` (the daily digest's «تجاوز ٤٨ ساعة»). */
+export async function countPendingSentBy(db: Db, before: Date): Promise<number> {
+  const [row] = await db.query<{ n: string }>(`select count(*) as n from registrations where status = 'pending' and created_at <= $1`, [before]);
+  return Number(row?.n ?? 0);
+}
+
 export type CourseFilterOption = { id: number; name: string; pending: number };
 
 /** Courses for the list's course filter: every course that has a request or takes registrations now. */

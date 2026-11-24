@@ -10,7 +10,8 @@
     "test": "tsx --conditions=react-server --test tests/*.test.ts",
     "migrate": "tsx --conditions=react-server scripts/migrate.ts",
     "seed": "tsx --conditions=react-server scripts/seed.ts",
-    "create-admin": "tsx --conditions=react-server scripts/create-admin.ts"
+    "create-admin": "tsx --conditions=react-server scripts/create-admin.ts",
+    "digest": "tsx --conditions=react-server scripts/admin-digest.ts"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.16",
