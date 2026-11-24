@@ -11,10 +11,8 @@ import type { Db } from './db';
  * addCampaignLink checks the role again against the database, as lib/invites.ts does. Nothing about visitors is stored;
  * who made a link is in audit_log by link id only.
  *
- * TODO(funnel-counts): requests per link. The daily counters (branch wave/awsiya-funnel-counts-20261120, not on this
- * base yet) keep only ig/fb/wa/qr as sources and fold every other `?from=` into «other». Once that branch is merged, its
- * normalizeSource() should also accept the names in this table (and its funnel_daily source check be widened), and
- * listCampaignLinks() can join the `saved` totals per name. Until then the page shows a TODO line instead of numbers.
+ * Numbers per link (FUNNEL_COUNTS on): lib/funnel.ts counts a `?from=` name only when it is a row of this table
+ * (anything else is «other»), and the page reads them with countsByLink(). Off: the page keeps its «لاحقاً» line.
  */
 
 export type CampaignErrors = Partial<Record<'name' | 'target' | 'course', string>>;

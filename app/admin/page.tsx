@@ -3,12 +3,14 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { reviewAction } from '@/app/admin/actions';
 import { AdminShell } from '@/components/AdminShell';
+import { FunnelCard } from '@/components/FunnelCard';
 import { Icon } from '@/components/Icon';
 import { NotifyWhatsAppLink } from '@/components/NotifyWhatsApp';
 import { countRequests, getRequest, lastNotifiedAt, listCourseFilterOptions, listRequests, oldestPendingAt, type RequestDetail } from '@/lib/admin';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { formatDate, formatDateTime, STATUS_LABEL, STATUS_TAG } from '@/lib/format';
+import { funnelOn, funnelSummary } from '@/lib/funnel';
 import { appOrigin } from '@/lib/mail';
 import { defaultSort, parseQueueView, pendingSummary, queueHref, STATUSES, WAIT_TAG, waitBadgeText, waitLevel } from '@/lib/queue';
 import type { RegistrationStatus } from '@/lib/registration';
@@ -100,13 +102,15 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
   // An unknown course id shows every course rather than an empty list that looks like «no requests».
   const view = { ...asked, courseId: courses.some((c) => c.id === asked.courseId) ? asked.courseId : null };
   const status = view.status;
-  const [counts, tabCounts, oldest, rows, open, notifiedAt] = await Promise.all([
+  const [counts, tabCounts, oldest, rows, open, notifiedAt, funnel] = await Promise.all([
     countRequests(db),
     view.courseId ? countRequests(db, view.courseId) : null,
     oldestPendingAt(db),
     listRequests(db, status, { courseId: view.courseId, sort: view.sort }),
     openId ? getRequest(db, openId) : null,
     openId ? lastNotifiedAt(db, openId) : null,
+    // FUNNEL_COUNTS off: no query and no card. A failed read hides the card rather than the request list.
+    funnelOn() ? funnelSummary(db, 7, now).catch(() => null) : null,
   ]);
   const inTabs = tabCounts ?? counts;
   const oldestLevel = oldest ? waitLevel(oldest, now) : 'fresh';
@@ -332,6 +336,7 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
           <div className="card empty">اختر طلباً من القائمة لعرض تفاصيله وإجابات الاستبيان.</div>
         )}
       </div>
+      {funnel ? <FunnelCard summary={funnel} linksPage={admin.role === 'super_admin'} /> : null}
     </AdminShell>
   );
 }

@@ -2,6 +2,7 @@ import 'server-only';
 import { hashPassword, normalizePhone } from './auth';
 import { isMinor, isYearShape, MAX_ACCOUNTS_PER_PHONE, visibleQuestions, MAX_NAME, MAX_TEXT, MIN_PASSWORD, NO, phoneError, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
 import type { Db } from './db';
+import { countStepInTx } from './funnel';
 
 /**
  * Registration: the questionnaire the admin defines, validation of a submission,
@@ -110,8 +111,12 @@ export const CONSENT_VERSION = '2026-11-18';
 
 export type RegisterResult = { ok: true; studentId: number; registrationId: number } | { ok: false; errors: FieldErrors };
 
-/** Validates everything and, if valid, stores the student, the registration and the answers together. */
-export async function register(db: Db, input: RegistrationInput): Promise<RegisterResult> {
+/**
+ * Validates everything and, if valid, stores the student, the registration and the answers together.
+ * `funnelSource` (FUNNEL_COUNTS on): counts `saved` under that source in the same transaction, last, so a registration
+ * that rolls back takes its count with it. A failed count never fails the registration (lib/funnel.ts, savepoint).
+ */
+export async function register(db: Db, input: RegistrationInput, opts: { funnelSource?: string | null } = {}): Promise<RegisterResult> {
   const student = validateStudent(input);
   const questions = await listQuestions(db);
   const answers = validateAnswers(questions, input.answers);
@@ -139,6 +144,7 @@ export async function register(db: Db, input: RegistrationInput): Promise<Regist
     for (const [questionId, answer] of Object.entries(answers.clean)) {
       await t.query('insert into registration_answers (registration_id, question_id, answer) values ($1, $2, $3)', [reg.id, questionId, JSON.stringify(answer)]);
     }
+    if (opts.funnelSource) await countStepInTx(t, 'saved', opts.funnelSource);
     return { ok: true as const, studentId: Number(st.id), registrationId: Number(reg.id) };
   });
   try {

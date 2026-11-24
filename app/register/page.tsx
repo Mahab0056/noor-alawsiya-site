@@ -7,6 +7,7 @@ import { Logo } from '@/components/SiteChrome';
 import { CONTACT } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { pickCourse } from '@/lib/form-rules';
+import { funnelOn, normalizeSource } from '@/lib/funnel';
 import { listOpenCourses, listQuestions } from '@/lib/registration';
 import { currentStudent } from '@/lib/session';
 
@@ -60,5 +61,7 @@ async function Register({ searchParams }: Pick<PageProps<'/register'>, 'searchPa
   const linked = pickCourse(courses, wanted);
   const missed = Boolean(wanted?.trim()) && linked === undefined;
   const preselect = linked ?? (courses.length === 1 && !missed ? courses[0].id : undefined);
-  return <RegisterForm courses={courses} questions={questions} preselect={preselect} courseMissed={missed} thisYear={thisYear} />;
+  // FUNNEL_COUNTS: the source the counters use (a link name from «روابط الحملات», `direct` or `other`). Off: no prop at all.
+  const from = funnelOn() ? await normalizeSource(db, params.from) : undefined;
+  return <RegisterForm courses={courses} questions={questions} preselect={preselect} courseMissed={missed} thisYear={thisYear} from={from} />;
 }

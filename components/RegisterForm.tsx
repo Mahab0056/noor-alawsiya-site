@@ -7,6 +7,7 @@ import { errorTarget, isMinorIn, isYearShape, MAX_NAME, MIN_PASSWORD, NO, normal
 import { Field, fieldProps } from './Field';
 import { Icon } from './Icon';
 import { Logo } from './SiteChrome';
+import { useFunnelSteps } from './useFunnelSteps';
 
 const STEPS = [
   { title: 'بيانات الطالب', sub: 'الاسم، سنة الميلاد، رقم الهاتف', lead: 'نطلب أقل ما يلزم للتواصل وفتح حساب الطالب.' },
@@ -21,8 +22,13 @@ type Student = { fullName: string; birthYear: string; phone: string; password: s
 
 const without = (errors: FieldErrors, key: string) => Object.fromEntries(Object.entries(errors).filter(([k]) => k !== key));
 
-/** `courseMissed`: the link asked for a course that is not open, so nothing is preselected and the form says why. */
-export function RegisterForm({ courses, questions, preselect, courseMissed = false, thisYear }: { courses: OpenCourse[]; questions: FormQuestion[]; preselect?: number; courseMissed?: boolean; thisYear: number }) {
+/**
+ * `courseMissed`: the link asked for a course that is not open, so nothing is preselected and the form says why.
+ * `from`: only with FUNNEL_COUNTS on, the source the page worked out from `?from=` (a link name, `direct` or `other`).
+ * The form then reports `view`, `start` and `review` once each, without waiting for the answer, and posts the source
+ * with the registration. Undefined (the flag off): nothing is reported and the form is exactly as before.
+ */
+export function RegisterForm({ courses, questions, preselect, courseMissed = false, thisYear, from }: { courses: OpenCourse[]; questions: FormQuestion[]; preselect?: number; courseMissed?: boolean; thisYear: number; from?: string }) {
   const [step, setStep] = useState(0);
   const [s, setS] = useState<Student>({ fullName: '', birthYear: '', phone: '', password: '', courseId: preselect ? String(preselect) : '', guardianName: '', guardianPhone: '', guardianConsent: false });
   const [answers, setAnswers] = useState<Answers>({});
@@ -33,6 +39,7 @@ export function RegisterForm({ courses, questions, preselect, courseMissed = fal
   const [move, setMove] = useState<{ n: number; field: string | null }>({ n: 0, field: null });
   const main = useRef<HTMLElement>(null);
   const heading = useRef<HTMLHeadingElement>(null);
+  const report = useFunnelSteps(from, step); // sign-up counters; does nothing when `from` is undefined (flag off)
 
   // After a step change or a failed check, put focus where the user needs to act next: the first field with a problem
   // in screen order, or else the step title. Only then: clearing an error while the user types must never take focus
@@ -72,6 +79,7 @@ export function RegisterForm({ courses, questions, preselect, courseMissed = fal
   }, undefined);
 
   const set = <K extends keyof Student>(key: K, value: Student[K]) => {
+    report('start');
     setS((old) => ({ ...old, [key]: value }));
     if (errors[key]) setErrors((old) => without(old, key));
     if (key === 'guardianPhone' || key === 'phone') setCopied(false);
@@ -84,6 +92,7 @@ export function RegisterForm({ courses, questions, preselect, courseMissed = fal
     setMove((old) => ({ n: old.n + 1, field: 'guardianConsent' })); // the next thing to do; a tick does not open the keyboard
   }
   const answer = (q: FormQuestion, value: string | string[]) => {
+    report('start');
     setAnswers((old) => ({ ...old, [String(q.id)]: value }));
     if (errors[`q${q.id}`]) setErrors((old) => without(old, `q${q.id}`));
   };
@@ -198,6 +207,7 @@ export function RegisterForm({ courses, questions, preselect, courseMissed = fal
         ) : null}
 
         <form action={formAction} onSubmit={onSubmit} onKeyDown={onKeyDown} noValidate>
+          {from !== undefined ? <input type="hidden" name="from" value={from} /> : null}
           <div hidden={step !== 0}>
             {courseMissed && !s.courseId ? (
               <p className="alert info" data-course-note>

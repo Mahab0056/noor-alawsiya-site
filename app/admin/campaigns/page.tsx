@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { AdminShell } from '@/components/AdminShell';
 import { CampaignForm } from '@/components/CampaignForm';
 import { CopyLink } from '@/components/CopyLink';
+import { STEP_LABEL } from '@/components/FunnelCard';
 import { countRequests } from '@/lib/admin';
 import { TARGET_LABEL } from '@/lib/campaign-links';
 import { pngScale, qrMatrix, qrPath, qrSide } from '@/lib/campaign-qr';
@@ -11,6 +12,7 @@ import { campaignCourses, getCampaignLink, listCampaignLinks, type CampaignLink 
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
 import { formatDate } from '@/lib/format';
+import { countsByLink, funnelOn, type StepCounts } from '@/lib/funnel';
 import { requireSuperAdmin } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'روابط الحملات', robots: { index: false, follow: false } };
@@ -20,6 +22,27 @@ export default function AdminCampaignsPage({ searchParams }: PageProps<'/admin/c
     <Suspense fallback={null}>
       <Campaigns searchParams={searchParams} />
     </Suspense>
+  );
+}
+
+/** Per link with FUNNEL_COUNTS on: the last 7 days. `review` is left out here (it is on the /admin card). */
+const LINK_STEPS = ['view', 'start', 'sent', 'saved'] as const;
+const LINK_SHORT: Record<(typeof LINK_STEPS)[number], string> = { view: 'فتح', start: 'بدأ', sent: 'أرسل', saved: 'حُفظ' };
+const NONE: StepCounts = { view: 0, start: 0, review: 0, sent: 0, saved: 0 };
+
+function LinkCounts({ name, counts }: { name: string; counts: StepCounts }) {
+  return (
+    <div className="fn-link">
+      <span className="vh">أرقام الرابط {name} في آخر ٧ أيام:</span>
+      <dl>
+        {LINK_STEPS.map((s) => (
+          <div key={s} title={STEP_LABEL[s]}>
+            <dt>{LINK_SHORT[s]}</dt>
+            <dd>{ar(counts[s])}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 
@@ -91,7 +114,15 @@ async function Campaigns({ searchParams }: Pick<PageProps<'/admin/campaigns'>, '
   const db = await getDb();
   const params = await searchParams;
   const showId = Number(typeof params.show === 'string' ? params.show : NaN);
-  const [links, courses, counts, shown] = await Promise.all([listCampaignLinks(db), campaignCourses(db), countRequests(db), getCampaignLink(db, showId)]);
+  const counting = funnelOn();
+  const [links, courses, counts, shown, perLink] = await Promise.all([
+    listCampaignLinks(db),
+    campaignCourses(db),
+    countRequests(db),
+    getCampaignLink(db, showId),
+    // FUNNEL_COUNTS off: no query, and the «لاحقاً» line stays. A failed read shows the line too, not an error page.
+    counting ? countsByLink(db, 7).catch(() => null) : null,
+  ]);
 
   return (
     <AdminShell admin={admin} current="campaigns" pending={counts.pending}>
@@ -110,10 +141,15 @@ async function Campaigns({ searchParams }: Pick<PageProps<'/admin/campaigns'>, '
             <h2>الروابط المصنوعة</h2>
             <span className="tag">{ar(links.length)}</span>
           </div>
-          {/* TODO(funnel-counts): requests per link, once the sign-up counters are on this base and count these names (lib/campaigns.ts). */}
-          <p className="cq-todo">
-            <span className="tag warn">لاحقاً</span> عدد الطلبات لكل رابط يظهر هنا بعد دمج عدّاد صفحة التسجيل. لم يُدمج بعد، فلا أرقام الآن.
-          </p>
+          {perLink ? (
+            <p className="hint fn-links-note">
+              أرقام كل رابط لآخر ٧ أيام من عدّاد صفحة التسجيل: «فتح» نموذج التسجيل، «بدأ» التعبئة، ضغط «أرسل»، و«حُفظ» الطلب. عدد المقبولين لكل رابط غير متاح.
+            </p>
+          ) : (
+            <p className="cq-todo">
+              <span className="tag warn">لاحقاً</span> عدد الطلبات لكل رابط يظهر هنا بعد دمج عدّاد صفحة التسجيل. لم يُدمج بعد، فلا أرقام الآن.
+            </p>
+          )}
           {links.length === 0 ? <p className="empty">لا روابط بعد. اصنع أول رابط من النموذج المجاور.</p> : null}
           <ol className="qlist">
             {links.map((l) => (
@@ -125,8 +161,9 @@ async function Campaigns({ searchParams }: Pick<PageProps<'/admin/campaigns'>, '
                   <div className="qmeta">
                     <Where l={l} />
                     <span className="mute">{formatDate(l.createdAt)}</span>
-                    <span className="mute">الطلبات: غير متاح بعد</span>
+                    {perLink ? null : <span className="mute">الطلبات: غير متاح بعد</span>}
                   </div>
+                  {perLink ? <LinkCounts name={l.name} counts={perLink.get(l.name) ?? NONE} /> : null}
                   <bdi className="cq-url">{l.url}</bdi>
                 </div>
                 <div className="sp">

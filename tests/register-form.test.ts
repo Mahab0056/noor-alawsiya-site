@@ -114,9 +114,11 @@ test('the form keeps nothing on the device and adds no field (minors’ data)', 
   const src = readFileSync('components/RegisterForm.tsx', 'utf8') + readFileSync('components/Field.tsx', 'utf8') + readFileSync('app/register/page.tsx', 'utf8');
   assert.doesNotMatch(src, /localStorage|sessionStorage|indexedDB|document\.cookie|sendBeacon|gtag|analytics/i);
   const form = readFileSync('components/RegisterForm.tsx', 'utf8').replace(/<Icon [^>]*\/>/g, '');
-  // Posted names: the eight fields of step 1, and the questionnaire answers. Nothing else carries a name.
+  // Posted names: the eight fields of step 1, and the questionnaire answers. Nothing else carries a name, except the
+  // sign-up counters' hidden `from` (FUNNEL_COUNTS on only): a campaign link name, `direct` or `other`, never personal.
   const names = [...form.matchAll(/fieldProps\('(\w+)'|name="(\w+)"/g)].map((m) => m[1] ?? m[2]);
-  assert.deepEqual([...new Set(names)].sort(), [...STUDENT_FIELDS].sort());
+  assert.deepEqual([...new Set(names)].filter((n) => n !== 'from').sort(), [...STUDENT_FIELDS].sort());
+  assert.match(form, /\{from !== undefined \? <input type="hidden" name="from" value=\{from\} \/> : null\}/);
   assert.deepEqual([...form.matchAll(/name=\{(\w+)\}/g)].map((m) => m[1]).filter((n) => n !== 'key'), []);
 });
 

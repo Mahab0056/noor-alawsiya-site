@@ -5,6 +5,7 @@ import { loginStudent } from '@/lib/accounts';
 import { allowRegistration } from '@/lib/auth';
 import { requestCourse } from '@/lib/course-requests';
 import { getDb } from '@/lib/db';
+import { countStep, funnelOn, normalizeSource } from '@/lib/funnel';
 import { register, type Answers, type FieldErrors } from '@/lib/registration';
 import { clientIp, endSession, requireStudent, startSession } from '@/lib/session';
 
@@ -26,6 +27,10 @@ export async function registerAction(_prev: RegisterState, form: FormData): Prom
   // connection from flooding the admin's inbox, and from probing which name and phone pairs already have accounts.
   const db = await getDb();
   if (!(await allowRegistration(db, await clientIp()))) return { errors: { form: 'طلبات كثيرة من هذا الاتصال. حاول بعد ساعة، أو تواصل مع إدارة المدرسة.' } };
+  // FUNNEL_COUNTS (lib/funnel.ts): `sent` once the registration limit has let the submission through, `saved` inside the
+  // registration's transaction. Neither can throw or stop the registration. Off: no source is read and nothing is counted.
+  const source = funnelOn() ? await normalizeSource(db, form.get('from')) : null;
+  if (source) await countStep(db, 'sent', source);
   const result = await register(db, {
     fullName: text(form, 'fullName'),
     birthYear: text(form, 'birthYear'),
@@ -36,7 +41,7 @@ export async function registerAction(_prev: RegisterState, form: FormData): Prom
     guardianConsent: form.get('guardianConsent') === 'on',
     courseId: text(form, 'courseId'),
     answers,
-  });
+  }, { funnelSource: source });
   if (!result.ok) return { errors: result.errors };
   await startSession('student', result.studentId);
   redirect('/account?new=1'); // the account page opens on «وصل طلب التسجيل»
