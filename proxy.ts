@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { canonicalRedirect, requestHost } from '@/lib/canonical-host';
 import { SESSION_COOKIE } from '@/lib/cookie-names';
+import { courseRosterOn, isRosterPath, ROSTER_HEADERS, ROSTER_OFF_PATH } from '@/lib/roster-flag';
 
 /**
  * Two quick checks before any page:
@@ -27,6 +28,15 @@ export function proxy(request: NextRequest) {
   if (request.method === 'POST' && request.headers.has('next-action')) return NextResponse.next();
   if (!request.cookies.has(SESSION_COOKIE[admin ? 'admin' : 'student'])) {
     return NextResponse.redirect(new URL(admin ? '/admin/login' : '/login', request.url));
+  }
+  // «كشف الدورة» (lib/roster-flag.ts). A page that streams cannot change its status any more, so this is decided here.
+  // OFF: rewritten to an address no route can ever have, so the answer is the site's normal 404 with the same headers
+  // as any unknown address (the prerendered /_not-found would add a long s-maxage). ON: never cached, never indexed.
+  if (isRosterPath(pathname)) {
+    if (!courseRosterOn()) return NextResponse.rewrite(new URL(ROSTER_OFF_PATH, request.url));
+    const res = NextResponse.next();
+    for (const [k, v] of Object.entries(ROSTER_HEADERS)) res.headers.set(k, v);
+    return res;
   }
   return NextResponse.next();
 }

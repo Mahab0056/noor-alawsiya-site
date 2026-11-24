@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { setCourseOpenAction } from '@/app/admin/courses/actions';
 import { AdminShell } from '@/components/AdminShell';
@@ -7,6 +8,7 @@ import { countRequests } from '@/lib/admin';
 import { listCoursesForAdmin, type AdminCourse } from '@/lib/courses';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
+import { courseRosterOn, rosterHref } from '@/lib/roster-flag';
 import { requireSuperAdmin } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'الدورات', robots: { index: false, follow: false } };
@@ -30,6 +32,7 @@ async function Courses() {
   const db = await getDb();
   const [courses, counts] = await Promise.all([listCoursesForAdmin(db), countRequests(db)]);
   const open = courses.filter((c) => c.accepting).length;
+  const roster = courseRosterOn(); // read after requireSuperAdmin, so per request
 
   return (
     <AdminShell admin={admin} current="courses" pending={counts.pending}>
@@ -63,6 +66,11 @@ async function Courses() {
                   </div>
                 </div>
                 <div className="sp">
+                  {roster ? (
+                    <Link className="btn sm w" href={rosterHref(c.id)} prefetch={false} aria-label={`كشف الدورة: ${c.name}`}>
+                      كشف الدورة
+                    </Link>
+                  ) : null}
                   {c.status === 'done' && !c.accepting ? null : (
                     <form action={setCourseOpenAction}>
                       <input type="hidden" name="id" value={c.id} />
