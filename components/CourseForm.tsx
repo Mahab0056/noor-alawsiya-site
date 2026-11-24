@@ -4,10 +4,13 @@ import { useActionState, useState } from 'react';
 import { addCourseAction, type CourseState } from '@/app/admin/courses/actions';
 import { Field, fieldProps } from './Field';
 
-const EMPTY = { name: '', teacher: '', place: '', startedOn: '', open: false };
+const EMPTY = { name: '', teacher: '', place: '', startedOn: '', open: false, seats: '' };
 
-/** «دورة جديدة». What the admin typed stays when the server reports a problem, and clears only after a save. */
-export function CourseForm() {
+/**
+ * «دورة جديدة». What the admin typed stays when the server reports a problem, and clears only after a save.
+ * `seats`: COURSE_SEATS is on, so the form also asks for «عدد المقاعد» (empty = no limit).
+ */
+export function CourseForm({ seats = false }: { seats?: boolean }) {
   const [f, setF] = useState(EMPTY);
   const [state, action, pending] = useActionState(async (prev: CourseState, form: FormData) => {
     const result = await addCourseAction(prev, form);
@@ -40,6 +43,11 @@ export function CourseForm() {
       <Field id="startedOn" label="موعد البدء" hint="كما تكتبه المدرسة، مثل: ٢٦ أيلول ٢٠٢٦." error={e.startedOn}>
         <input {...fieldProps('startedOn', { hint: true, error: e.startedOn })} value={f.startedOn} onChange={(ev) => setF({ ...f, startedOn: ev.target.value })} maxLength={60} />
       </Field>
+      {seats ? (
+        <Field id="seats" label="عدد المقاعد" hint="اتركه فارغاً إن لم يكن للحلقة حد. حين يكتمل بالطلبات المقبولة يُغلق التسجيل وحده." error={e.seats}>
+          <input {...fieldProps('seats', { hint: true, error: e.seats, ltr: true })} value={f.seats} onChange={(ev) => setF({ ...f, seats: ev.target.value })} inputMode="numeric" maxLength={4} />
+        </Field>
+      ) : null}
       <label className="opt">
         <input type="checkbox" name="open" checked={f.open} onChange={(ev) => setF({ ...f, open: ev.target.checked })} />
         تقبل التسجيل من الموقع الآن

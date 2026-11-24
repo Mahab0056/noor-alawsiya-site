@@ -140,7 +140,8 @@ test('pages: every badge and «سجّل» link comes from the database view, and
   }
   // The admin actions expire the public cache, so a change shows at once.
   const actions = readFileSync('app/admin/courses/actions.ts', 'utf8');
-  assert.equal(actions.match(/updateTag\(PUBLIC_COURSES_TAG\)/g)?.length, 2);
+  // open/close, add, and «عدد المقاعد» (COURSE_SEATS, 0015).
+  assert.equal(actions.match(/updateTag\(PUBLIC_COURSES_TAG\)/g)?.length, 3);
   // No database during `next build`.
   const cache = readFileSync('lib/public-courses-cache.ts', 'utf8');
   assert.match(cache, /NEXT_PHASE === 'phase-production-build'\) \{\s*cacheLife\(RETRY_SOON\);\s*return null;/);

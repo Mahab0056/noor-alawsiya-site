@@ -1,10 +1,12 @@
 'use server';
 
-import { refresh } from 'next/cache';
+import { refresh, updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requestAdminCode, verifyAdminCode } from '@/lib/accounts';
 import { addQuestion, moveQuestion, recordNotified, reviewRequest, setQuestionActive, validateQuestion, type QuestionInput } from '@/lib/admin';
 import { getDb } from '@/lib/db';
+import { PUBLIC_COURSES_TAG } from '@/lib/public-courses-cache';
+import { courseSeatsOn } from '@/lib/seats';
 import { listQuestions, NO, YES, type QuestionKind, type RegistrationStatus } from '@/lib/registration';
 import { clientIp, endSession, requireAdmin, startSession } from '@/lib/session';
 
@@ -61,6 +63,11 @@ export async function reviewAction(form: FormData) {
   if (requestId && (decision === 'accepted' || decision === 'rejected')) {
     const result = await reviewRequest(await getDb(), admin.id, requestId, decision, text(form, 'note'));
     if (result === 'conflict') redirect(`/admin?status=${from}${course}&id=${requestId}&conflict=1#request`);
+    if (courseSeatsOn()) {
+      updateTag(PUBLIC_COURSES_TAG); // «باقي N مقاعد» and a closed course show on the public pages at once
+      if (result === 'full') redirect(`/admin?status=${from}${course}&id=${requestId}&full=1#request`);
+      if (result === 'closed') redirect(`/admin?status=${decision}${course}&id=${requestId}&done=1&closed=1#request`);
+    }
     redirect(`/admin?status=${decision}${course}&id=${requestId}&done=1#request`); // show the request in its new list, still open
   }
   redirect(`/admin?status=${from}${course}`);

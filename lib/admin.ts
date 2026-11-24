@@ -1,6 +1,7 @@
 import 'server-only';
 import type { Db } from './db';
 import type { QueueSort } from './queue';
+import { courseSeatsOn } from './seats';
 import { MAX_TEXT, type QuestionKind, type RegistrationStatus, type ShowIf } from './registration';
 
 /**
@@ -110,24 +111,44 @@ export async function getRequest(db: Db, id: number): Promise<RequestDetail | nu
   };
 }
 
-export type ReviewResult = 'saved' | 'missing' | 'conflict';
+export type ReviewResult = 'saved' | 'missing' | 'conflict' | 'full' | 'closed';
 
 /**
  * Accept or reject. A request can be re-decided; rejecting an accepted one revokes access to lessons.
  * 'conflict': accepting an old rejected request while the same student has another pending or accepted request for the
  * same course (allowed since 0007, which lets a rejected course be asked for again). Decide the newer request instead.
+ *
+ * With COURSE_SEATS on and a seat limit on the course (0015, lib/seats.ts), an accept first locks the course row, so
+ * two admins accepting the last seat at once are taken one after the other:
+ * - 'full': every seat is already taken by accepted requests; nothing is saved («اكتملت الدورة»).
+ * - 'closed': saved, and this accept took the last seat, so registration for the course closed in the same transaction.
+ * Reopening is never automatic, also not after a reject frees a seat.
  */
-export async function reviewRequest(db: Db, adminId: number, id: number, decision: 'accepted' | 'rejected', note: string): Promise<ReviewResult> {
+export async function reviewRequest(db: Db, adminId: number, id: number, decision: 'accepted' | 'rejected', note: string, seatsOn = courseSeatsOn()): Promise<ReviewResult> {
   const adminNote = note.trim().slice(0, MAX_TEXT) || null;
   try {
     return await db.tx(async (t) => {
+      let fills: number | null = null; // the course id whose last seat this accept takes
+      if (seatsOn && decision === 'accepted') {
+        const [r] = await t.query<{ course_id: string | number; status: RegistrationStatus }>('select course_id, status from registrations where id = $1', [id]);
+        if (!r) return 'missing';
+        const [c] = await t.query<{ seats: number | null; published: boolean }>('select seats, published from courses where id = $1 for update', [r.course_id]);
+        if (c && c.seats !== null && r.status !== 'accepted') {
+          const [{ n }] = await t.query<{ n: string | number }>(`select count(*) as n from registrations where course_id = $1 and status = 'accepted'`, [r.course_id]);
+          if (Number(n) >= Number(c.seats)) return 'full';
+          if (Number(n) + 1 >= Number(c.seats) && c.published) fills = Number(r.course_id);
+        }
+      }
       const rows = await t.query<{ id: string }>(
         'update registrations set status = $2, admin_note = $3, reviewed_by = $4, reviewed_at = now() where id = $1 returning id',
         [id, decision, adminNote, adminId]
       );
       if (rows.length === 0) return 'missing';
       await audit(t, adminId, `registration.${decision}`, `registration:${id}`);
-      return 'saved';
+      if (fills === null) return 'saved';
+      await t.query('update courses set published = false where id = $1', [fills]);
+      await audit(t, adminId, 'course.closed', `course:${fills}`, { reason: 'full' });
+      return 'closed';
     });
   } catch (e) {
     if ((e as { code?: string }).code === '23505') return 'conflict'; // registrations_one_live_idx

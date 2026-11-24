@@ -1,5 +1,6 @@
 import type { Course, CourseKind } from './data';
 import type { Db } from './db';
+import { courseSeatsOn, seatsLeft } from './seats';
 
 /**
  * The public pages (home, /courses) show the school record (lib/data.ts). The record's 'open' means «still running»,
@@ -12,7 +13,7 @@ import type { Db } from './db';
  * registration badges, and never fail.
  */
 
-export type DbCourseRow = { id: number; name: string; kind: CourseKind | null; description: string | null; teacher: string; place: string | null; startedOn: string | null; status: Course['status']; accepting: boolean };
+export type DbCourseRow = { id: number; name: string; kind: CourseKind | null; description: string | null; teacher: string; place: string | null; startedOn: string | null; status: Course['status']; accepting: boolean; seatsLeft?: number | null };
 
 export type PublicCourses = {
   /** Record course name → database id, for the courses that take registrations now. */
@@ -21,13 +22,26 @@ export type PublicCourses = {
   extra: (Course & { id: number; accepting: boolean })[];
   /** Every course that takes registrations now, record or new, for the JSON-LD and the counts. */
   open: { id: number; name: string; description: string | null; teacher: string }[];
+  /** COURSE_SEATS only: database id → seats still free, for the courses that take registrations and have a limit. */
+  seatsLeft?: Record<number, number>;
 };
 
 /** Names compare after trimming and collapsing spaces, so a stray space in the panel still matches. */
 export const nameKey = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 /** Only published rows leave the database: an unpublished course is never shown to the public. */
-export async function readPublishedCourses(db: Db): Promise<DbCourseRow[]> {
+export async function readPublishedCourses(db: Db, seatsOn = courseSeatsOn()): Promise<DbCourseRow[]> {
+  if (seatsOn) {
+    const rows = await db.query<{ id: string | number; name: string; kind: CourseKind | null; description: string | null; teacher: string; place: string | null; started_on: string | null; status: Course['status']; seats: number | null; accepted: string | number }>(
+      `select c.id, c.name, c.kind, c.description, c.teacher, c.place, c.started_on, c.status, c.seats,
+              (select count(*) from registrations r where r.course_id = c.id and r.status = 'accepted') as accepted
+         from courses c where c.published order by c.id`,
+    );
+    return rows.map((r) => ({
+      id: Number(r.id), name: r.name, kind: r.kind, description: r.description, teacher: r.teacher, place: r.place,
+      startedOn: r.started_on, status: r.status, accepting: r.status === 'open', seatsLeft: seatsLeft(r.seats === null ? null : Number(r.seats), Number(r.accepted)),
+    }));
+  }
   const rows = await db.query<{ id: string | number; name: string; kind: CourseKind | null; description: string | null; teacher: string; place: string | null; started_on: string | null; status: Course['status'] }>(
     `select id, name, kind, description, teacher, place, started_on, status from courses where published order by id`,
   );
@@ -42,8 +56,10 @@ export function matchCourses(record: Course[], rows: DbCourseRow[]): PublicCours
   const openByName: Record<string, number> = {};
   const open: PublicCourses['open'] = [];
   const extra: PublicCourses['extra'] = [];
+  const left: Record<number, number> = {};
   for (const r of rows) {
     const key = nameKey(r.name);
+    if (r.accepting && typeof r.seatsLeft === 'number') left[r.id] = r.seatsLeft;
     if (recordNames.has(key)) {
       // Two rows with one name (should not happen): the first open one wins, so the link always reaches an open course.
       if (r.accepting && openByName[key] === undefined) {
@@ -61,7 +77,7 @@ export function matchCourses(record: Course[], rows: DbCourseRow[]): PublicCours
   }
   // Open new courses first, then the rest, newest first.
   extra.sort((a, b) => Number(b.accepting) - Number(a.accepting) || b.id - a.id);
-  return { openByName, extra, open };
+  return rows.some((r) => r.seatsLeft !== undefined) ? { openByName, extra, open, seatsLeft: left } : { openByName, extra, open };
 }
 
 /** The six home cards: courses that take registrations first (in record order), then the usual picks. */

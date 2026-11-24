@@ -9,6 +9,7 @@ import { ShareCourse } from '@/components/ShareCourse';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { CONTACT, KIND_TAG } from '@/lib/data';
 import { getPublicCourses } from '@/lib/public-courses-cache';
+import { seatsLeftLabel, showSeatsBadge } from '@/lib/seats';
 import { COURSE_PAGES, courseBySlug, courseMetadata, registerHref } from '@/lib/share';
 
 // One page per course in the record, built at `next build` (no database read there). Any other slug renders notFound().
@@ -41,6 +42,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[slug]'
   const live = await getPublicCourses();
   const openId = live?.openByName[course.name]; // the database: takes new students now
   const registerLabel = 'سجّل في هذه الدورة';
+  const left = openId !== undefined ? live?.seatsLeft?.[openId] : undefined; // COURSE_SEATS only
 
   return (
     <>
@@ -60,6 +62,7 @@ export default async function CoursePage({ params }: PageProps<'/courses/[slug]'
                   التسجيل مفتوح
                 </span>
               ) : null}
+              {showSeatsBadge(left) ? <span className="tag warn">{seatsLeftLabel(left)}</span> : null}
               {open ? (
                 <span className="tag ok">
                   <i />

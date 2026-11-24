@@ -7,7 +7,8 @@ export type QuestionKind = 'single' | 'multi' | 'yes_no' | 'text';
 export type ShowIf = { question_id: number; equals: string } | null;
 export type FormQuestion = { id: number; label: string; kind: QuestionKind; options: string[]; required: boolean; position: number; showIf: ShowIf; active: boolean };
 export type Answers = Record<string, string | string[] | undefined>;
-export type OpenCourse = { id: number; name: string; kind: string | null; teacher: string; place: string | null };
+/** seatsLeft: COURSE_SEATS only, and only for a course with a seat limit. */
+export type OpenCourse = { id: number; name: string; kind: string | null; teacher: string; place: string | null; seatsLeft?: number };
 export type FieldErrors = Record<string, string>;
 
 export const ADULT_AGE = 18; // من زاد فرق السنة عنده على 18 بالغ؛ يطابق قيد minors_need_guardian في قاعدة البيانات

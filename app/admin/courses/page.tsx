@@ -1,21 +1,75 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { setCourseOpenAction } from '@/app/admin/courses/actions';
+import { setCourseOpenAction, setCourseSeatsAction } from '@/app/admin/courses/actions';
 import { AdminShell } from '@/components/AdminShell';
 import { CourseForm } from '@/components/CourseForm';
 import { countRequests } from '@/lib/admin';
 import { listCoursesForAdmin, type AdminCourse } from '@/lib/courses';
 import { ar } from '@/lib/data';
 import { getDb } from '@/lib/db';
+import { courseSeatsOn, seatsCount, seatsLeft } from '@/lib/seats';
 import { requireSuperAdmin } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'الدورات', robots: { index: false, follow: false } };
 
-export default function AdminCoursesPage() {
+export default function AdminCoursesPage({ searchParams }: PageProps<'/admin/courses'>) {
   return (
     <Suspense fallback={null}>
-      <Courses />
+      <Courses searchParams={searchParams} />
     </Suspense>
+  );
+}
+
+/** COURSE_SEATS: the answer to the last seats or open action, from the URL (?full= / ?closed= / ?seatsSaved= / ?seatsError= + course id). */
+function SeatsNotice({ params, courses }: { params: Record<string, string | string[] | undefined>; courses: AdminCourse[] }) {
+  const pick = (key: string) => {
+    const v = params[key];
+    return typeof v === 'string' ? courses.find((c) => String(c.id) === v) : undefined;
+  };
+  const full = pick('full');
+  if (full) {
+    return (
+      <p className="alert bad" role="alert">
+        اكتملت الدورة «{full.name}»: كل مقاعدها ({ar(full.seats ?? 0)}) لطلبات مقبولة، فلم يُفتح التسجيل. ارفع عدد المقاعد أولاً، أو اتركه فارغاً بلا حد.
+      </p>
+    );
+  }
+  const closed = pick('closed');
+  if (closed) {
+    return (
+      <p className="alert ok" role="status">
+        حُفظ عدد المقاعد. المقاعد في «{closed.name}» مأخوذة كلها بطلبات مقبولة، فأُغلق التسجيل فيها.
+      </p>
+    );
+  }
+  const error = pick('seatsError');
+  if (error) {
+    return (
+      <p className="alert bad" role="alert">
+        لم يُحفظ عدد المقاعد في «{error.name}»: اكتب رقماً من ١ إلى ١٠٠٠، أو اتركه فارغاً بلا حد.
+      </p>
+    );
+  }
+  const saved = pick('seatsSaved');
+  if (saved) {
+    return (
+      <p className="alert ok" role="status">
+        حُفظ عدد المقاعد في «{saved.name}».
+      </p>
+    );
+  }
+  return null;
+}
+
+function SeatsMeta({ c }: { c: AdminCourse }) {
+  if (c.seats === null) return <span className="mute">المقاعد: بلا حد</span>;
+  const left = seatsLeft(c.seats, c.accepted) ?? 0;
+  return left === 0 ? (
+    <span className="tag warn">اكتملت: {seatsCount(c.seats)}</span>
+  ) : (
+    <span className="mute">
+      المقاعد: {seatsCount(c.seats)}، الباقي {ar(left)}
+    </span>
   );
 }
 
@@ -25,10 +79,12 @@ function StateTag({ c }: { c: AdminCourse }) {
   return <span className="tag warn">التسجيل مغلق</span>;
 }
 
-async function Courses() {
+async function Courses({ searchParams }: Pick<PageProps<'/admin/courses'>, 'searchParams'>) {
   const admin = await requireSuperAdmin();
   const db = await getDb();
   const [courses, counts] = await Promise.all([listCoursesForAdmin(db), countRequests(db)]);
+  const seatsOn = courseSeatsOn();
+  const params = seatsOn ? await searchParams : {};
   const open = courses.filter((c) => c.accepting).length;
 
   return (
@@ -41,6 +97,7 @@ async function Courses() {
           </p>
         </div>
       </div>
+      {seatsOn ? <SeatsNotice params={params} courses={courses} /> : null}
       <div className="row">
         <div className="card">
           <div className="ch">
@@ -60,9 +117,28 @@ async function Courses() {
                     <span className="mute">البدء: {c.startedOn ?? 'غير مذكور'}</span>
                     {c.pending > 0 ? <span className="tag y">{ar(c.pending)} قيد المراجعة</span> : null}
                     {c.accepted > 0 ? <span className="mute">{ar(c.accepted)} مقبول</span> : null}
+                    {seatsOn ? <SeatsMeta c={c} /> : null}
                   </div>
                 </div>
                 <div className="sp">
+                  {seatsOn && c.status !== 'done' ? (
+                    <form action={setCourseSeatsAction}>
+                      <input type="hidden" name="id" value={c.id} />
+                      <input
+                        className="inp"
+                        name="seats"
+                        defaultValue={c.seats ?? ''}
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="بلا حد"
+                        aria-label={`عدد المقاعد في ${c.name}، فارغ بلا حد`}
+                        style={{ width: 84, minHeight: 44, padding: '8px 10px', textAlign: 'center' }}
+                      />
+                      <button className="btn sm w" aria-label={`حفظ عدد المقاعد في ${c.name}`}>
+                        حفظ المقاعد
+                      </button>
+                    </form>
+                  ) : null}
                   {c.status === 'done' && !c.accepting ? null : (
                     <form action={setCourseOpenAction}>
                       <input type="hidden" name="id" value={c.id} />
@@ -79,7 +155,7 @@ async function Courses() {
         </div>
         <div className="card q">
           <h2 className="qh">دورة جديدة</h2>
-          <CourseForm />
+          <CourseForm seats={seatsOn} />
         </div>
       </div>
     </AdminShell>

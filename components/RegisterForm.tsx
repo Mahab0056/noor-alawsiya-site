@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useActionState, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { registerAction, type RegisterState } from '@/app/actions';
 import { errorTarget, isMinorIn, isYearShape, MAX_NAME, MIN_PASSWORD, NO, normalizePhone, phoneError, STUDENT_FIELDS, toYear, visibleQuestions, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse } from '@/lib/form-rules';
+import { seatsLeftLabel, showSeatsBadge } from '@/lib/seats';
 import { Field, fieldProps } from './Field';
 import { Icon } from './Icon';
 import { Logo } from './SiteChrome';
@@ -205,7 +206,19 @@ export function RegisterForm({ courses, questions, preselect, courseMissed = fal
               </p>
             ) : null}
             <div className="card q">
-              <Field id="courseId" label="الدورة" error={errors.courseId} required>
+              <Field
+                id="courseId"
+                label="الدورة"
+                error={errors.courseId}
+                required
+                after={
+                  showSeatsBadge(course?.seatsLeft) ? (
+                    <span className="tag warn" data-seats-left style={{ justifySelf: 'start' }}>
+                      {seatsLeftLabel(course.seatsLeft)}
+                    </span>
+                  ) : undefined
+                }
+              >
                 <select {...fieldProps('courseId', { error: errors.courseId, required: true })} value={s.courseId} onChange={(e) => set('courseId', e.target.value)}>
                   <option value="">اختر الدورة</option>
                   {courses.map((c) => (

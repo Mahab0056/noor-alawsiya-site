@@ -12,6 +12,7 @@ import { formatDate, formatDateTime, STATUS_LABEL, STATUS_TAG } from '@/lib/form
 import { appOrigin } from '@/lib/mail';
 import { defaultSort, parseQueueView, pendingSummary, queueHref, STATUSES, WAIT_TAG, waitBadgeText, waitLevel } from '@/lib/queue';
 import type { RegistrationStatus } from '@/lib/registration';
+import { courseSeatsOn } from '@/lib/seats';
 import { requireAdmin } from '@/lib/session';
 import { decisionMessage, DEFAULT_ORIGIN, notifyRecipient, whatsappLink } from '@/lib/whatsapp';
 
@@ -301,6 +302,16 @@ async function Requests({ searchParams }: Pick<PageProps<'/admin'>, 'searchParam
             {params.conflict === '1' ? (
               <p className="alert bad" role="alert" style={{ margin: '12px 22px 0' }}>
                 لم يُحفظ القبول: لهذا الطالب طلب آخر قيد المراجعة أو مقبول للدورة نفسها. راجع الطلب الأحدث بدلاً منه.
+              </p>
+            ) : null}
+            {params.full === '1' && courseSeatsOn() ? (
+              <p className="alert bad" role="alert" style={{ margin: '12px 22px 0' }}>
+                اكتملت الدورة: كل مقاعدها لطلبات مقبولة، فلم يُحفظ القبول ولم يتغيّر الطلب. لقبوله ارفع عدد المقاعد في «الدورات».
+              </p>
+            ) : null}
+            {params.closed === '1' && courseSeatsOn() ? (
+              <p className="alert info" role="status" style={{ margin: '12px 22px 0' }}>
+                هذا القبول أخذ آخر مقعد، فأُغلق التسجيل في الدورة. إعادة فتحه من «الدورات».
               </p>
             ) : null}
             {params.done === '1' ? (

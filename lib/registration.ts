@@ -2,6 +2,7 @@ import 'server-only';
 import { hashPassword, normalizePhone } from './auth';
 import { isMinor, isYearShape, MAX_ACCOUNTS_PER_PHONE, visibleQuestions, MAX_NAME, MAX_TEXT, MIN_PASSWORD, NO, phoneError, toYear, YES, type Answers, type FieldErrors, type FormQuestion, type OpenCourse, type QuestionKind, type ShowIf } from './form-rules';
 import type { Db } from './db';
+import { courseSeatsOn, seatsLeft } from './seats';
 
 /**
  * Registration: the questionnaire the admin defines, validation of a submission,
@@ -31,7 +32,15 @@ export async function listQuestions(db: Db, { includeInactive = false } = {}) {
   return rows.map(toQuestion);
 }
 
-export async function listOpenCourses(db: Db) {
+export async function listOpenCourses(db: Db, seatsOn = courseSeatsOn()) {
+  if (seatsOn) {
+    const rows = await db.query<{ id: string; name: string; kind: string | null; teacher: string; place: string | null; seats: number | null; accepted: string | number }>(
+      `select c.id, c.name, c.kind, c.teacher, c.place, c.seats,
+              (select count(*) from registrations r where r.course_id = c.id and r.status = 'accepted') as accepted
+         from courses c where c.published and c.status = 'open' order by c.id`
+    );
+    return rows.map(({ seats, accepted, ...r }): OpenCourse => (seats === null ? { ...r, id: Number(r.id) } : { ...r, id: Number(r.id), seatsLeft: seatsLeft(Number(seats), Number(accepted)) ?? 0 }));
+  }
   const rows = await db.query<{ id: string; name: string; kind: string | null; teacher: string; place: string | null }>(
     `select id, name, kind, teacher, place from courses where published and status = 'open' order by id`
   );
