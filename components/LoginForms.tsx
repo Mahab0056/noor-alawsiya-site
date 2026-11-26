@@ -71,6 +71,10 @@ export function AdminLoginForm() {
           <Field id="code" label="رمز الدخول" hint="ستة أرقام وصلتك بالبريد، صالحة عشر دقائق">
             <input {...fieldProps('code', { hint: true, required: true, ltr: true })} inputMode="numeric" autoComplete="one-time-code" maxLength={6} autoFocus />
           </Field>
+          <label className="opt" style={{ marginBottom: 16 }}>
+            <input type="checkbox" name="remember" defaultChecked />
+            تذكّر هذا المتصفح ٦٠ يوماً (لا تختره على جهاز مشترك)
+          </label>
           <button className="btn k" type="submit" name="intent" value="verify" disabled={pending}>
             {pending ? 'جارٍ الدخول…' : 'دخول الإدارة'}
           </button>

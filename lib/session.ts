@@ -15,9 +15,9 @@ import { getDb } from './db';
 
 const COOKIE: Record<SessionKind, string> = SESSION_COOKIE;
 
-export async function startSession(kind: SessionKind, userId: number) {
+export async function startSession(kind: SessionKind, userId: number, opts: { remember?: boolean } = {}) {
   const db = await getDb();
-  const { token, expiresAt } = await createSession(db, kind, userId);
+  const { token, expiresAt } = await createSession(db, kind, userId, opts);
   (await cookies()).set(COOKIE[kind], token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',

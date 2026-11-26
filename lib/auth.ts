@@ -43,9 +43,12 @@ const TTL_MS: Record<SessionKind, number> = { student: 30 * 24 * 3600_000, admin
 const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 /** Creates a session and returns the raw token for the cookie. Only its hash is stored. */
-export async function createSession(db: Db, kind: SessionKind, userId: number) {
+/** An admin who ticks «تذكّر هذا المتصفح» stays signed in on that browser this long, with no new emailed code. */
+export const ADMIN_REMEMBER_MS = 60 * 24 * 3600_000;
+
+export async function createSession(db: Db, kind: SessionKind, userId: number, opts: { remember?: boolean } = {}) {
   const token = randomBytes(32).toString('base64url');
-  const expiresAt = new Date(Date.now() + TTL_MS[kind]);
+  const expiresAt = new Date(Date.now() + (kind === 'admin' && opts.remember ? ADMIN_REMEMBER_MS : TTL_MS[kind]));
   await db.query('delete from sessions where expires_at < now()');
   await db.query(`insert into sessions (token_hash, kind, ${kind === 'student' ? 'student_id' : 'admin_id'}, expires_at) values ($1, $2, $3, $4)`, [sha256(token), kind, userId, expiresAt]);
   return { token, expiresAt };

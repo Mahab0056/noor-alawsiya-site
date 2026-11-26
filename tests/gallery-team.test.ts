@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { after, before, test } from 'node:test';
 import { createAdmin, getAdmin } from '@/lib/accounts';
-import { createSession, readSession } from '@/lib/auth';
+import { ADMIN_REMEMBER_MS, createSession, destroySession, readSession } from '@/lib/auth';
 import { resetDbForTests, type Db } from '@/lib/db';
 import { addGalleryImage, deleteGalleryImage, GalleryError, getGalleryImage, listGallery, MAX_IMAGE_BYTES, moveGalleryImage, setGalleryCaption, sniffImage } from '@/lib/gallery';
 import { addTeamMember, listTeam, removeTeamMember, TeamError } from '@/lib/team';
@@ -109,4 +109,23 @@ test('an admin adds another super admin and removes them; nobody removes themsel
 
   // Pictures the removed admin uploaded stay in the gallery.
   assert.ok((await listGallery(db)).length > 0);
+});
+
+test('«تذكّر هذا المتصفح» keeps an admin session for 60 days; without it the session lasts 12 hours', async () => {
+  const [{ id }] = await db.query<{ id: string }>(`select id from admins where email = 'second@example.test'`);
+  const admin = Number(id);
+  const near = (d: Date, ms: number) => Math.abs(d.getTime() - Date.now() - ms) < 60_000;
+
+  const short = await createSession(db, 'admin', admin);
+  assert.ok(near(short.expiresAt, 12 * 3600_000));
+  const long = await createSession(db, 'admin', admin, { remember: true });
+  assert.ok(near(long.expiresAt, ADMIN_REMEMBER_MS));
+  assert.ok(near((await readSession(db, long.token))!.expiresAt, ADMIN_REMEMBER_MS));
+
+  // Signing out ends the remembered session at once, and a student session never takes the long life.
+  await destroySession(db, long.token);
+  assert.equal(await readSession(db, long.token), null);
+  const [s] = await db.query<{ id: string }>(`insert into students (full_name, birth_year, phone, password_hash) values ('طالب تجريبي', 1995, '07700000055', 'x') returning id`);
+  const student = await createSession(db, 'student', Number(s.id), { remember: true });
+  assert.ok(near(student.expiresAt, 30 * 24 * 3600_000));
 });

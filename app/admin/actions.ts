@@ -40,7 +40,7 @@ export async function adminLoginAction(_prev: AdminLoginState, form: FormData): 
 
   const result = await verifyAdminCode(await getDb(), email, text(form, 'code'), ip);
   if (result.ok) {
-    await startSession('admin', result.adminId);
+    await startSession('admin', result.adminId, { remember: form.get('remember') === 'on' });
     redirect('/admin');
   }
   return { step: 'code', email, error: result.reason === 'throttled' ? TOO_MANY : 'الرمز غير صحيح أو انتهت صلاحيته.' };
