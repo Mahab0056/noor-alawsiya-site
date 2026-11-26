@@ -8,7 +8,7 @@ import { createAdmin } from '../lib/accounts';
 import { getDb } from '../lib/db';
 
 async function main() {
-  const [name, email, role = 'staff'] = process.argv.slice(2);
+  const [name, email, role = 'owner'] = process.argv.slice(2);
   if (!name || !email || (role !== 'owner' && role !== 'staff')) {
     console.error('Usage: npm run create-admin -- "Name" email@example.com [owner|staff]');
     process.exit(2);

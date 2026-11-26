@@ -99,3 +99,13 @@ fieldset.q > legend + * { clear: both; }
   .qrow { display: grid; grid-template-columns: auto 1fr; align-items: start; padding: 14px 16px; }
   .qrow .sp { grid-column: 2; margin: 0; }
 }
+
+/* معرض الصور في لوحة الإدارة */
+.gthumb { width: 96px; height: 72px; object-fit: cover; border-radius: 10px; flex: none; background: #eee; }
+.qrow.grow .gcap { flex: 1; min-width: 0; display: flex; gap: 6px; }
+.qrow.grow .gcap .inp { min-height: 40px; padding: 8px 12px; font-size: 14.5px; }
+@media (max-width: 900px) {
+  .qrow.grow { grid-template-columns: auto 1fr; }
+  .qrow.grow .gcap { grid-column: 1 / -1; }
+  .qrow.grow .sp { grid-column: 1 / -1; }
+}

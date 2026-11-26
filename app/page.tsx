@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { CourseCard, TeacherGrid } from '@/components/Cards';
+import { HomeGallery } from '@/components/HomeGallery';
 import { Icon } from '@/components/Icon';
 import { SiteFooter, SiteHeader } from '@/components/SiteChrome';
 import { ar, CONTACT, countOf, COURSES, DONE_COURSES, HOME_COURSES, MAHFAL_COURSES, OPEN_COURSES, TEACHERS } from '@/lib/data';
@@ -216,6 +218,10 @@ export default function Home() {
             <TeacherGrid />
           </div>
         </section>
+
+        <Suspense fallback={null}>
+          <HomeGallery />
+        </Suspense>
 
         <section className="ayah">
           <p>﴿إِنَّ هَٰذَا الْقُرْآنَ يَهْدِي لِلَّتِي هِيَ أَقْوَمُ﴾</p>
