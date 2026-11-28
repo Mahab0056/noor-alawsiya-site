@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   // PGlite (the local development database) loads its own wasm files from disk, so it must not be bundled.
   serverExternalPackages: ['@electric-sql/pglite'],
+  // Gallery uploads: one picture of at most 5 MB per request (lib/gallery.ts), plus the multipart overhead.
+  experimental: { serverActions: { bodySizeLimit: '6mb' } },
   async headers() {
     return [
       {

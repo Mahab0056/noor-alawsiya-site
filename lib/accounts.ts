@@ -106,6 +106,7 @@ export async function verifyAdminCode(db: Db, emailInput: string, codeInput: str
 
 /**
  * Creates an admin. The address is the whole credential: login is by a code sent to it.
+ * Every admin is a super admin («مشرف عام», role `owner`) since migration 0006; `staff` stays in the type for old rows only.
  * A password may still be stored for an account that wants one, but nothing requires it.
  */
 export async function createAdmin(db: Db, input: { name: string; email: string; password?: string; role?: 'owner' | 'staff' }) {
@@ -116,7 +117,7 @@ export async function createAdmin(db: Db, input: { name: string; email: string; 
     input.name.trim(),
     email,
     input.password === undefined ? null : await hashPassword(input.password),
-    input.role ?? 'staff',
+    input.role ?? 'owner',
   ]);
   return { adminId: Number(row.id) };
 }
